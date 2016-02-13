@@ -16,7 +16,8 @@ import re
 
 class Mutation():
     __doc__ = "arg: mutation string. seq if protein coding."
-    def __init__(self, mutation, seq=None,forceDNA=False):
+
+    def __init__(self, mutation, seq=None,forceDNA=False, coding=True):
         if forceDNA and mutation.find(">"):  # a hack...
             rex = re.match("(\D)(\d+)(\D)",mutation)
             if rex:
@@ -28,16 +29,19 @@ class Mutation():
             self.nfrom=rex.group(2)
             self.nto=rex.group(3)
             self.nnum=rex.group(1)
-        if re.match("(\D)(\d+)(\D)",mutation):
+        elif re.match("(\D)(\d+)(\D)",mutation):
             raise Exception("mutations on DNA form protein is not yet implemented")
         else:
             raise MutationFormatError()
-        if seq:
+        if seq and coding:
             pass
         else:
             self.pfrom=None
             self.pto=None
             self.pnum=None
+
+    def __str__(self):
+        return str(self.nnum)+self.nfrom+">"+self.nto
 
 class MutationFormatError(Exception):
     message='''Error in the parsing a mutation notation.
@@ -77,7 +81,7 @@ class MutationDNASeq(Seq):
                 raise MutationFormatError()
         #parse mutations
         for mutation in mutations:
-            if mutation.find(">"): #DNA
+            if mutation.find(">") != -1: #DNA
                 self.mutations.append(Mutation(mutation, self))
             else: #protein
                 self.mutations.append(Mutation(mutation))
@@ -110,6 +114,7 @@ def test():
     print("slice 1:5", MutationDNASeq(seq))
     m="2A>T"
     print("Mutating "+str(m)+" ",MutationDNASeq(seq).mutate(m))
+    print("Test complete")
 
 
 if __name__ == "__main__":
