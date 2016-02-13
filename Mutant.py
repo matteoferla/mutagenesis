@@ -34,7 +34,8 @@ class Mutation():
         else:
             raise MutationFormatError()
         if seq:
-            assert
+            pass
+            ####HERE!
         if seq and coding:
             translation=seq.translate()
             r=math.floor()
