@@ -5,10 +5,6 @@ N = "\n"
 T = "\t"
 # N="<br/>"
 
-# Hello
-#sausagess
-
-
 class test:
     def __init__(self,data):
         self.data=data
