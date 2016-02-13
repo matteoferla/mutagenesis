@@ -12,7 +12,7 @@ T = "\t"
 from Bio.Seq import Seq
 from Bio.Alphabet import NucleotideAlphabet
 from Bio._py3k import basestring
-import re
+import re, math
 
 class Mutation():
     __doc__ = "arg: mutation string. seq if protein coding."
@@ -33,12 +33,21 @@ class Mutation():
             raise Exception("mutations on DNA form protein is not yet implemented")
         else:
             raise MutationFormatError()
+        if seq:
+            assert
         if seq and coding:
-            pass
+            translation=seq.translate()
+            r=math.floor()
+            translation[]
+            self.pfrom=None
+            self.pto=None
+            self.pnum=None
+            self.codon=None
         else:
             self.pfrom=None
             self.pto=None
             self.pnum=None
+            self.codon=None
 
     def __str__(self):
         return str(self.nnum)+self.nfrom+">"+self.nto
@@ -61,7 +70,9 @@ class MutationDNASeq(Seq):
     method mutate(): mutates the sequence based on the  mutations, expressed as a string with spaces or list of strings.
         Different customs for nucleotide and protein are used to tell them apart:
         * 234A>T for DNA
-        * A12F for protein, unless forceDNA is true.'''
+        * A12F for protein, unless forceDNA is true.
+        What if someone passes a Bio.Seq object at __init__?
+        '''
     def __init__(self,data):  #For now only DNA.
         __doc__="This is just a copy of the Bio.Seq.Seq.__init__ method with the difference that it can only be nucleotide"
         if not isinstance(data, basestring):

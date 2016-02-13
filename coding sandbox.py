@@ -12,6 +12,19 @@ class test:
         print(x)
         return self.data[x[0]][x[1]]
 
+
+class outer:
+    class inner:
+        def __init__(self,oself,a):
+            self.y=oself.n+" from "+a
+
+        def __str__(self):
+            return self.y
+
+    def __init__(self):
+        self.n="Bye"
+        self.x=self.inner(self,"Bob")
+
+
 if __name__ == "__main__":
-    t=test([[1,2],[3,4]])
-    print(t[1,:])
+    print(outer().x)
