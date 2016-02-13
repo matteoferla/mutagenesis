@@ -28,18 +28,17 @@ class Mutation():
         if rex:
             self.nfrom=rex.group(2)
             self.nto=rex.group(3)
-            self.nnum=rex.group(1)
+            self.nnum=int(rex.group(1))
         elif re.match("(\D)(\d+)(\D)",mutation):
             raise Exception("mutations on DNA form protein is not yet implemented")
         else:
             raise MutationFormatError()
         if seq:
-            pass
-            ####HERE!
+            assert seq[self.nnum-1] == self.nfrom, self.nnum+" is "+seq[self.nnum-1]+", not "+self.nfrom
         if seq and coding:
             translation=seq.translate()
-            r=math.floor()
-            translation[]
+            #r=math.floor()
+            #translation[]
             self.pfrom=None
             self.pto=None
             self.pnum=None
@@ -124,7 +123,7 @@ def test():
     seq="ATTTTGGGGAATTTTGGGGA"
     print("Generate a mutationDNASeq instance: ", seq)
     print("slice 1:5", MutationDNASeq(seq))
-    m="2A>T"
+    m="2T>A"
     print("Mutating "+str(m)+" ",MutationDNASeq(seq).mutate(m))
     print("Test complete")
 
