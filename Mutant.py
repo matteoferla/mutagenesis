@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-#Written for python 3
+# Written for python 3
 
 __author__ = 'Matteo'
 __doc__ = ''''''
@@ -14,117 +14,210 @@ from Bio.Alphabet import NucleotideAlphabet
 from Bio._py3k import basestring
 import re, math
 
-class Mutation():
-    __doc__ = "arg: mutation string. seq if protein coding."
 
-    def __init__(self, mutation, seq=None,forceDNA=False, coding=True):
+class Mutation():
+    __doc__ = '''
+    Accepts as arguments:
+    * a mutation string
+    * (opt) Seq object
+    * (opt) forceDNA flag (def. False), if DNA is used but with protein notation
+    * (opt) coding flag (def. True) to use the ref sequence as coding.
+    It has the following groups of attributes:
+    * nucFrom, nucTo, nucN: nucleotide from, to and number.
+    * protFrom, protTo, protN: protein from, to and number
+    * codonFrom, codonTo: codon from and to
+    * type: synonymous, non-synonymous and nonsense.
+    It does not check whether the nucleotides are legitimate.
+
+    Has also the method apply which returns a string where the mutation is applied to the Seq object (unchanged).
+    '''
+
+    def __init__(self, mutation, seq=None, forceDNA=False, coding=True):
         if forceDNA and mutation.find(">"):  # a hack...
-            rex = re.match("(\D)(\d+)(\D)",mutation)
+            rex = re.match("(\D)(\d+)(\D)", mutation)
             if rex:
-                mutation=str(rex.group(2))+str(rex.group(1))+">"+str(rex.group(3))
+                mutation = str(rex.group(2)) + str(rex.group(1)) + ">" + str(rex.group(3))
             else:
                 MutationFormatError()
-        rex=re.match("(\d+)(\w).(\w)",mutation)  #234A>T
+        rex = re.match("(\d+)(\w).(\w)", mutation)  # 234A>T
         if rex:
-            self.nfrom=rex.group(2)
-            self.nto=rex.group(3)
-            self.nnum=int(rex.group(1))
-        elif re.match("(\D)(\d+)(\D)",mutation):
+            self.nucFrom = rex.group(2)
+            self.nucTo = rex.group(3)
+            self.nucN = int(rex.group(1))
+        elif re.match("(\D)(\d+)(\D)", mutation):
             raise Exception("mutations on DNA form protein is not yet implemented")
         else:
             raise MutationFormatError()
         if seq:
-            assert seq[self.nnum-1] == self.nfrom, self.nnum+" is "+seq[self.nnum-1]+", not "+self.nfrom
+            assert seq[self.nucN - 1] == self.nucFrom, self.nucN + " is " + seq[
+                self.nucN - 1] + ", not " + self.nucFrom
         if seq and coding:
-            translation=seq.translate()
-            #r=math.floor()
-            #translation[]
-            self.pfrom=None
-            self.pto=None
-            self.pnum=None
-            self.codon=None
+            translation = seq.translate()._data
+            r = math.floor(self.nucN / 3)
+            self.protN = r + 1
+            self.codonFrom = seq[r * 3:r * 3 + 3]._data
+            self.codonTo = seq[r * 3:self.nucN-1]._data+self.nucTo+seq[self.nucN:r * 3 + 3]._data
+            self.protFrom = translation[r]
+            self.protTo = Seq(self.codonTo).translate()._data
+            if self.protFrom == self.protTo:
+                self.type = "synonymous"
+            elif self.protTo == "*":
+                self.type = "nonsense"
+            else:
+                self.type = "non-synonymous"
+            print(self.__dict__)
         else:
-            self.pfrom=None
-            self.pto=None
-            self.pnum=None
-            self.codon=None
+            self.protFrom = None
+            self.protTo = None
+            self.protNum = None
+            self.codonFrom = None
+            self.codonTo = None
+
+    def apply(self,seq):
+        return seq[:self.nucN-1]._data+self.nucTo+seq[self.nucN:]._data
 
     def __str__(self):
-        return str(self.nnum)+self.nfrom+">"+self.nto
+        text = str(self.nucN) + self.nucFrom + ">" + self.nucTo
+        if self.protN:
+            text += " (" + self.type + ": " + self.protFrom + str(self.protN) + self.protTo + ")"
+        return text
 
 class MutationFormatError(Exception):
-    message='''Error in the parsing a mutation notation.
+    message = '''Error in the parsing a mutation notation.
     A mutation should be written as 123A>T for nucleotide or W45T for protein.
     If the method accepts multiple mutations, they should be separated with a space or as a list.
     '''
+
     def __init__(self, value=None):
-        self.value=value
+        self.value = value
+
     def __str__(self):
-        reply=self.message
+        reply = self.message
         if self.value:
-            reply += "Error raised due to "+str(self.value)
+            reply += "Error raised due to " + str(self.value)
         return reply
 
 class MutationDNASeq(Seq):
-    __doc__ = '''A variant of the seq class, but with the method mutate which counts from one.
-    method mutate(): mutates the sequence based on the  mutations, expressed as a string with spaces or list of strings.
-        Different customs for nucleotide and protein are used to tell them apart:
-        * 234A>T for DNA
-        * A12F for protein, unless forceDNA is true.
-        What if someone passes a Bio.Seq object at __init__?
-        '''
-    def __init__(self,data):  #For now only DNA.
-        __doc__="This is just a copy of the Bio.Seq.Seq.__init__ method with the difference that it can only be nucleotide"
-        if not isinstance(data, basestring):
+    __doc__ = '''A variant of the seq class, but with the method mutate and the attribute mutations.
+    Also accepts a Seq object in addition to a string for the sequence.
+
+method mutate(): mutates the sequence based on the  mutations, expressed as a string with spaces or list of strings.
+Different customs for nucleotide and protein are used to tell them apart:
+* 234A>T for DNA
+* A12F for protein, unless forceDNA is true. This is not yet implemented and will require special coding.
+
+The mutations list contains mutation objects.
+'''
+
+    def __init__(self, data):  # For now only DNA.
+        __doc__ = '''This is just a copy of the Bio.Seq.Seq.__init__ method with the difference that
+        * it can only be nucleotide
+        * data can be string or Seq'''
+        if isinstance(data, Seq):
+            self._data = data._data
+            # TODO assert if nucleotide
+        elif not isinstance(data, basestring):
             raise TypeError("The sequence data given to a Seq object should be a string (not another Seq object etc)")
-        self.wt = data
-        self._data = data
+        else:
+            self._data = data
         self.alphabet = NucleotideAlphabet()  # Can only be nucleotide...
-        self.mutations=[]
-    def mutate(self, mutations,forceDNA=False):
-        #reorganise and check mutations into a list of string
-        if isinstance(mutations,str):
-            mutations=mutations.split()
+        self.wt = data
+        self.mutations = []
+
+    def mutate(self, mutations, forceDNA=False):
+        # reorganise and check mutations into a list of string
+        if isinstance(mutations, str):
+            mutations = mutations.split()
         if not isinstance(mutations, list):
             raise MutationFormatError()
         for mutation in mutations:
             if not isinstance(mutation, str):
                 raise MutationFormatError()
-        #parse mutations
+        # parse mutations
         for mutation in mutations:
-            if mutation.find(">") != -1: #DNA
-                self.mutations.append(Mutation(mutation, self))
-            else: #protein
-                self.mutations.append(Mutation(mutation))
+            if mutation.find(">") != -1:  # DNA
+                mut=Mutation(mutation, self)
+                self.mutations.append(mut)
+                self._data=mut.apply(self)
+            else:  # protein
+                raise Exception("Feature not added yet")
+        return self
 
-            rex=re.match("(\d+)(\w).(\w)",mutation)  #234A>T
-            rexp = re.match("(\D)(\d+)(\D)",mutation)
-            if rex:
-                mutdex={"from": rex.group(2),"to": rex.group(3),"base":rex.group(1)}
-            elif rexp:
-                mutdex={"from": rex.group(1),"to": rex.group(3),"residue":rex.group(2)}
-            else:
-                raise MutationFormatError()
 
-class mutationSpectrum():
-    __doc__= '''Returns the mutational spectrum, an object with
+class mutationSpectrum():  #is this needed for Pedel?
+    __doc__ = '''Returns the mutational spectrum, an object with
     the mutation frequency,
     the base freq
     the SE of the mut freq
     the mutational rate
 
+
+    class method from sequences
+    init from values
+
+    A lot of this will be plagiarised from JS https://github.com/matteoferla/mutant_calculator/blob/master/mutationalBias.js
+    The JS is...
+    //**************************************************
+    //the mutball object.
+    //Commit and read were initially written as methods of mutball, but were moved out in order to quarantine interactions with document to the document.
+    //The single letter codes (A, C, T, G, S, W, N and so forth are the normal ones. see https://en.wikipedia.org/wiki/Nucleic_acid_notation if unfamiliar. Ts transition, Tv transversion.
+    function mutagen() {
+        var mutball = {
+            source: "load",
+            sequence: "",
+            baseList: "",
+            freqMean: "N/A",
+            freqVar: "N/A",
+            freqList: "N/A",
+            mutTable: [
+                [0, 0, 0, 0],
+                [0, 0, 0, 0],
+                [0, 0, 0, 0],
+                [0, 0, 0, 0]
+            ],
+            compTable: [
+                [0, 0, 0, 0],
+                [0, 0, 0, 0],
+                [0, 0, 0, 0],
+                [0, 0, 0, 0]
+            ],
+            rawTable: [
+                [0, 0, 0, 0],
+                [0, 0, 0, 0],
+                [0, 0, 0, 0],
+                [0, 0, 0, 0]
+            ],
+            _types: ['TsOverTv', 'W2SOverS2W', 'W2N', 'S2N', 'W2S', 'S2W', 'ΣTs', 'Ts1', 'Ts2', 'ΣTv', 'TvW', 'TvN1', 'TvS', 'TvN2']
+        }
+        for (b in bases) {
+            mutball["sum" + bases[b]] = "25";
+        }
+        for (b in ways) {
+            mutball[ways[b]] = "0";
+        }
+        return mutball;
+    }
+
     '''
-    def __init__(self, mutationList):
-        raise Exception('CODE NOT WRITTEN')
-    def __getitem__(self,direction): #as in spectrum["A>C"]? freq("A>C") better?
+    bases="A T G C".split()
+    #ways=  #itertools... permutation?
+
+    @classmethod
+    def fromSeqs(cls,mutationList): #class method
         raise Exception('CODE NOT WRITTEN')
 
+    def __init__(self, mutdex):
+        raise Exception('CODE NOT WRITTEN')
+
+    def __getitem__(self, direction):  # as in spectrum["A>C"]? freq("A>C") better?
+        raise Exception('CODE NOT WRITTEN')
+
+
 def test():
-    seq="ATTTTGGGGAATTTTGGGGA"
+    seq = "ATTTTGGGGAATTTTGGGGAA"
     print("Generate a mutationDNASeq instance: ", seq)
-    print("slice 1:5", MutationDNASeq(seq))
-    m="2T>A"
-    print("Mutating "+str(m)+" ",MutationDNASeq(seq).mutate(m))
+    m = "2T>A 4T>C"
+    print("Mutating " + str(m) + " ", MutationDNASeq(seq).mutate(m))
     print("Test complete")
 
 

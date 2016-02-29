@@ -15,16 +15,22 @@ class test:
 
 class outer:
     class inner:
-        def __init__(self,oself,a):
-            self.y=oself.n+" from "+a
+        def __init__(self):
+            a="ZORRO"
+            print(a)
+            outself=super()
+            self.y=outself._data+" from "+a
 
         def __str__(self):
             return self.y
 
     def __init__(self):
-        self.n="Bye"
-        self.x=self.inner(self,"Bob")
+        self._data="set in outer instance"
+        print(self._data)
+        #self._data=self.inner(self, "within")
+        self._data=self.inner()
+        print(self._data)
 
 
 if __name__ == "__main__":
-    print(outer().x)
+    print(outer()._data)
