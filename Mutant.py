@@ -56,7 +56,7 @@ class Mutation():
             r = math.floor(self.nucN / 3)
             self.protN = r + 1
             self.codonFrom = seq[r * 3:r * 3 + 3]._data
-            self.codonTo = seq[r * 3:self.nucN-1]._data+self.nucTo+seq[self.nucN:r * 3 + 3]._data
+            self.codonTo = seq[r * 3:self.nucN - 1]._data + self.nucTo + seq[self.nucN:r * 3 + 3]._data
             self.protFrom = translation[r]
             self.protTo = Seq(self.codonTo).translate()._data
             if self.protFrom == self.protTo:
@@ -73,14 +73,15 @@ class Mutation():
             self.codonFrom = None
             self.codonTo = None
 
-    def apply(self,seq):
-        return seq[:self.nucN-1]._data+self.nucTo+seq[self.nucN:]._data
+    def apply(self, seq):
+        return seq[:self.nucN - 1]._data + self.nucTo + seq[self.nucN:]._data
 
     def __str__(self):
         text = str(self.nucN) + self.nucFrom + ">" + self.nucTo
         if self.protN:
             text += " (" + self.type + ": " + self.protFrom + str(self.protN) + self.protTo + ")"
         return text
+
 
 class MutationFormatError(Exception):
     message = '''Error in the parsing a mutation notation.
@@ -96,6 +97,7 @@ class MutationFormatError(Exception):
         if self.value:
             reply += "Error raised due to " + str(self.value)
         return reply
+
 
 class MutationDNASeq(Seq):
     __doc__ = '''A variant of the seq class, but with the method mutate and the attribute mutations.
@@ -136,15 +138,15 @@ The mutations list contains mutation objects.
         # parse mutations
         for mutation in mutations:
             if mutation.find(">") != -1:  # DNA
-                mut=Mutation(mutation, self)
+                mut = Mutation(mutation, self)
                 self.mutations.append(mut)
-                self._data=mut.apply(self)
+                self._data = mut.apply(self)
             else:  # protein
                 raise Exception("Feature not added yet")
         return self
 
 
-class mutationSpectrum():  #is this needed for Pedel?
+class mutationSpectrum():  # is this needed for Pedel?
     __doc__ = '''Returns the mutational spectrum, an object with
     the mutation frequency,
     the base freq
@@ -160,35 +162,8 @@ class mutationSpectrum():  #is this needed for Pedel?
     //**************************************************
     //the mutball object.
     //Commit and read were initially written as methods of mutball, but were moved out in order to quarantine interactions with document to the document.
-    //The single letter codes (A, C, T, G, S, W, N and so forth are the normal ones. see https://en.wikipedia.org/wiki/Nucleic_acid_notation if unfamiliar. Ts transition, Tv transversion.
     function mutagen() {
-        var mutball = {
-            source: "load",
-            sequence: "",
-            baseList: "",
-            freqMean: "N/A",
-            freqVar: "N/A",
-            freqList: "N/A",
-            mutTable: [
-                [0, 0, 0, 0],
-                [0, 0, 0, 0],
-                [0, 0, 0, 0],
-                [0, 0, 0, 0]
-            ],
-            compTable: [
-                [0, 0, 0, 0],
-                [0, 0, 0, 0],
-                [0, 0, 0, 0],
-                [0, 0, 0, 0]
-            ],
-            rawTable: [
-                [0, 0, 0, 0],
-                [0, 0, 0, 0],
-                [0, 0, 0, 0],
-                [0, 0, 0, 0]
-            ],
-            _types: ['TsOverTv', 'W2SOverS2W', 'W2N', 'S2N', 'W2S', 'S2W', 'ΣTs', 'Ts1', 'Ts2', 'ΣTv', 'TvW', 'TvN1', 'TvS', 'TvN2']
-        }
+        var mutball = {}
         for (b in bases) {
             mutball["sum" + bases[b]] = "25";
         }
@@ -199,14 +174,32 @@ class mutationSpectrum():  #is this needed for Pedel?
     }
 
     '''
-    bases="A T G C".split()
-    #ways=  #itertools... permutation?
+    types = ['TsOverTv', 'W2SOverS2W', 'W2N', 'S2N', 'W2S', 'S2W', 'ΣTs', 'Ts1', 'Ts2', 'ΣTv', 'TvW', 'TvN1', 'TvS',
+             'TvN2'];
+    bases = "A T G C".split()
+
+    # ways=  #itertools... permutation?
 
     @classmethod
-    def fromSeqs(cls,mutationList): #class method
+    def fromSeqs(cls, mutationList):  # class method
         raise Exception('CODE NOT WRITTEN')
+        for variant in mutationList:
+            pass
 
-    def __init__(self, mutdex):
+    def __init__(self,
+                 source: "loaded",
+                 sequence: "",
+                 baseList: "",
+                 freqMean: None,
+                 freqVar: None,
+                 freqList: None,
+                 mutTable: [
+                     [0, 0, 0, 0],
+                     [0, 0, 0, 0],
+                     [0, 0, 0, 0],
+                     [0, 0, 0, 0]
+                 ]
+                 ):
         raise Exception('CODE NOT WRITTEN')
 
     def __getitem__(self, direction):  # as in spectrum["A>C"]? freq("A>C") better?
