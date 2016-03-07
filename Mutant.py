@@ -14,6 +14,17 @@ from Bio.Alphabet import NucleotideAlphabet
 from Bio._py3k import basestring
 import re, math
 
+__doc__ = '''
+Classes:
+* mutation
+* MutationFormatError
+* MutationDNASeq
+* mutationSpectrum
+
+
+This is a partial rewrite of mutanalyst js code. As a result a lot of attribute names are in camelCase, following JS style as opposed to PEP8.
+'''
+
 
 class Mutation():
     __doc__ = '''
@@ -33,6 +44,7 @@ class Mutation():
     '''
 
     def __init__(self, mutation, seq=None, forceDNA=False, coding=True):
+        # TODO seq should be a weak reference.
         if forceDNA and mutation.find(">"):  # a hack...
             rex = re.match("(\D)(\d+)(\D)", mutation)
             if rex:
@@ -111,7 +123,8 @@ Different customs for nucleotide and protein are used to tell them apart:
 The mutations list contains mutation objects.
 '''
 
-    def __init__(self, data):  # For now only DNA.
+    def __init__(self, data):
+        # TODO For now only DNA. In future translate and replace AA.
         __doc__ = '''This is just a copy of the Bio.Seq.Seq.__init__ method with the difference that
         * it can only be nucleotide
         * data can be string or Seq'''
@@ -145,8 +158,19 @@ The mutations list contains mutation objects.
                 raise Exception("Feature not added yet")
         return self
 
+class mutationTable:
+    __doc__ = " ATGC^2 table. Basically a 2d enum"
+    def __init__(self):
+        self._data=[
+                       [0, 0, 0, 0],
+                       [0, 0, 0, 0],
+                       [0, 0, 0, 0],
+                       [0, 0, 0, 0]
+                   ]
+        #GO TO HERE...
+        # figure out how the table gets in there in the first place
 
-class mutationSpectrum():  # is this needed for Pedel?
+class mutationSpectrum:  # is this needed for Pedel?
     __doc__ = '''Returns the mutational spectrum, an object with
     the mutation frequency,
     the base freq
@@ -173,6 +197,9 @@ class mutationSpectrum():  # is this needed for Pedel?
         return mutball;
     }
 
+    time for a rethink.
+
+
     '''
     types = ['TsOverTv', 'W2SOverS2W', 'W2N', 'S2N', 'W2S', 'S2W', 'ΣTs', 'Ts1', 'Ts2', 'ΣTv', 'TvW', 'TvN1', 'TvS',
              'TvN2'];
@@ -181,25 +208,44 @@ class mutationSpectrum():  # is this needed for Pedel?
     # ways=  #itertools... permutation?
 
     @classmethod
+    def fromValues(cls,
+                   source="loaded",
+                   sequence="",
+                   baseList="",
+                   freqMean=0,
+                   freqVar=0,
+                   freqList=0,
+                   mutTable=[
+                       [0, 0, 0, 0],
+                       [0, 0, 0, 0],
+                       [0, 0, 0, 0],
+                       [0, 0, 0, 0]
+                   ],
+                   mutFreq=[  # todo check what this is called in mutanalyst.js
+                       [0, 0, 0, 0],
+                       [0, 0, 0, 0],
+                       [0, 0, 0, 0],
+                       [0, 0, 0, 0]
+                   ]
+                   ):
+        # this method dones not check if the values are correct.
+        mut = cls.__new__(cls)
+        # each individually as I should assert what they are
+        mut.source = source
+        mut.sequence = sequence
+        mut.baseList = baseList
+        mut.freqMean = freqMean
+        mut.freqVar = freqVar
+        mut.freqList = freqList
+
+    @classmethod  # change to __init__
     def fromSeqs(cls, mutationList):  # class method
+        # user gives a bunch of mutant sequences
         raise Exception('CODE NOT WRITTEN')
         for variant in mutationList:
-            pass
+            assert type(variant) is MutationDNASeq, str(variant) + " is not a instance of MutationDNASeq as expected."
 
-    def __init__(self,
-                 source: "loaded",
-                 sequence: "",
-                 baseList: "",
-                 freqMean: None,
-                 freqVar: None,
-                 freqList: None,
-                 mutTable: [
-                     [0, 0, 0, 0],
-                     [0, 0, 0, 0],
-                     [0, 0, 0, 0],
-                     [0, 0, 0, 0]
-                 ]
-                 ):
+    def __init__(self, ):
         raise Exception('CODE NOT WRITTEN')
 
     def __getitem__(self, direction):  # as in spectrum["A>C"]? freq("A>C") better?
@@ -211,6 +257,7 @@ def test():
     print("Generate a mutationDNASeq instance: ", seq)
     m = "2T>A 4T>C"
     print("Mutating " + str(m) + " ", MutationDNASeq(seq).mutate(m))
+    mutationSpectrum()
     print("Test complete")
 
 

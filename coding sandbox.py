@@ -32,5 +32,30 @@ class outer:
         print(self._data)
 
 
+class foo:
+    def __init__(self,text='text'):
+        self._data='initialised value'
+
+    @classmethod
+    def bar(cls):
+        x=cls.__new__(cls)
+        x._data='gherkins'
+        return x
+
+    def __str__(self):
+        return self._data
+
+
+class foo2():
+    def mymethod(self):
+        self._data="method"
+
+    def __init__(self):
+        self.mymethod()
+
+    def __str__(self):
+        return self._data
+
+
 if __name__ == "__main__":
-    print(outer()._data)
+    print(foo2())
