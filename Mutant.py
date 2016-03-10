@@ -45,13 +45,13 @@ class Mutation():
 
     def __init__(self, mutation, seq=None, forceDNA=False, coding=True):
         # TODO seq should be a weak reference.
-        if forceDNA and mutation.find(">"):  # a hack...
+        if forceDNA:  # a hack...
             rex = re.match("(\D)(\d+)(\D)", mutation)
             if rex:
                 mutation = str(rex.group(2)) + str(rex.group(1)) + ">" + str(rex.group(3))
             else:
                 MutationFormatError()
-        rex = re.match("(\d+)(\w).(\w)", mutation)  # 234A>T
+        rex = re.match("(\d+)(\w)\>(\w)", mutation)  # 234A>T
         if rex:
             self.nucFrom = rex.group(2)
             self.nucTo = rex.group(3)
@@ -150,12 +150,9 @@ The mutations list contains mutation objects.
                 raise MutationFormatError()
         # parse mutations
         for mutation in mutations:
-            if mutation.find(">") != -1:  # DNA
-                mut = Mutation(mutation, self)
-                self.mutations.append(mut)
-                self._data = mut.apply(self)
-            else:  # protein
-                raise Exception("Feature not added yet")
+            mut = Mutation(mutation, self, forceDNA)
+            self.mutations.append(mut)
+            self._data = mut.apply(self)
         return self
 
 class mutationTable:
@@ -257,7 +254,7 @@ def test():
     print("Generate a mutationDNASeq instance: ", seq)
     m = "2T>A 4T>C"
     print("Mutating " + str(m) + " ", MutationDNASeq(seq).mutate(m))
-    mutationSpectrum()
+    #mutationSpectrum()
     print("Test complete")
 
 
