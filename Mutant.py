@@ -34,8 +34,8 @@ class Mutation():
     * (opt) forceDNA flag (def. False), if DNA is used but with protein notation
     * (opt) coding flag (def. True) to use the ref sequence as coding.
     It has the following groups of attributes:
-    * nucFrom, nucTo, nucN: nucleotide from, to and number.
-    * protFrom, protTo, protN: protein from, to and number
+    * nucFrom, nucTo, nucNum: nucleotide from, to and number.
+    * protFrom, protTo, protNum: protein from, to and number
     * codonFrom, codonTo: codon from and to
     * type: synonymous, non-synonymous and nonsense.
     It does not check whether the nucleotides are legitimate.
@@ -45,53 +45,75 @@ class Mutation():
 
     def __init__(self, mutation, seq=None, forceDNA=False, coding=True):
         # TODO seq should be a weak reference.
+        self.protFrom = None
+        self.protTo = None
+        self.protNum = None
+        self.codonFrom = None
+        self.codonTo = None
+        self.nucFrom = None
+        self.nucTo = None
+        self.nucNum = None
+        self.type = "ERROR"
+        # deal with forceDNA flag
         if forceDNA:  # a hack...
             rex = re.match("(\D)(\d+)(\D)", mutation)
             if rex:
                 mutation = str(rex.group(2)) + str(rex.group(1)) + ">" + str(rex.group(3))
+            elif mutation.find(">") != -1:  # 234A>T
+                print('forceDNA flag called even if DNA mutation given') # TODO warning
             else:
                 MutationFormatError()
         rex = re.match("(\d+)(\w)\>(\w)", mutation)  # 234A>T
+        rexprot = re.match("(\D)(\d+)(\D)", mutation) # A23T
+        # NUCLEOTIDE
         if rex:
             self.nucFrom = rex.group(2)
             self.nucTo = rex.group(3)
-            self.nucN = int(rex.group(1))
-        elif re.match("(\D)(\d+)(\D)", mutation):
-            raise Exception("mutations on DNA form protein is not yet implemented")
-        else:
-            raise MutationFormatError()
-        if seq:
-            assert seq[self.nucN - 1] == self.nucFrom, self.nucN + " is " + seq[
-                self.nucN - 1] + ", not " + self.nucFrom
-        if seq and coding:
-            translation = seq.translate()._data
-            r = math.floor(self.nucN / 3)
-            self.protN = r + 1
-            self.codonFrom = seq[r * 3:r * 3 + 3]._data
-            self.codonTo = seq[r * 3:self.nucN - 1]._data + self.nucTo + seq[self.nucN:r * 3 + 3]._data
-            self.protFrom = translation[r]
-            self.protTo = Seq(self.codonTo).translate()._data
-            if self.protFrom == self.protTo:
-                self.type = "synonymous"
+            self.nucNum = int(rex.group(1))
+            if seq:
+                assert seq[self.nucNum - 1] == self.nucFrom, self.nucNum + " is " + seq[
+                    self.nucNum - 1] + ", not " + self.nucFrom
+            if seq and coding:
+                translation = seq.translate()._data
+                r = math.floor(self.nucNum / 3)
+                self.protNum = r + 1
+                self.codonFrom = seq[r * 3:r * 3 + 3]._data
+                self.codonTo = seq[r * 3:self.nucNum - 1]._data + self.nucTo + seq[self.nucNum:r * 3 + 3]._data
+                self.protFrom = translation[r]
+                self.protTo = Seq(self.codonTo).translate()._data
+                if self.protFrom == self.protTo:
+                    self.type = "synonymous"
+                elif self.protTo == "*":
+                    self.type = "nonsense"
+                else:
+                    self.type = "non-synonymous"
+        # PROTEIN
+        elif rexprot:
+            self.protFrom = rexprot.group(1)
+            self.protTo = rexprot.group(3)
+            self.protNum = int(rexprot.group(2))
+            if self.protTo == self.protFrom:
+                self.type = "synonymous"   #no questions asked.
             elif self.protTo == "*":
                 self.type = "nonsense"
             else:
                 self.type = "non-synonymous"
-            print(self.__dict__)
+            if seq and coding:
+                assert seq.translate()[self.protNum - 1] == self.protFrom, self.protNum + " is " + seq.translate()[self.protNum - 1] + ", not " + self.protFrom
+                self.codonFrom = seq._data[(self.protNum -1) *3 : (self.protNum -1) *3 +3]
+                raise  Exception('UNFINISHED')
+                #find minimum mutations needed to get that mutation from given codon.
         else:
-            self.protFrom = None
-            self.protTo = None
-            self.protNum = None
-            self.codonFrom = None
-            self.codonTo = None
+            raise MutationFormatError()
+        print(self.__dict__)
 
     def apply(self, seq):
-        return seq[:self.nucN - 1]._data + self.nucTo + seq[self.nucN:]._data
+        return seq[:self.nucNum - 1]._data + self.nucTo + seq[self.nucNum:]._data
 
     def __str__(self):
-        text = str(self.nucN) + self.nucFrom + ">" + self.nucTo
-        if self.protN:
-            text += " (" + self.type + ": " + self.protFrom + str(self.protN) + self.protTo + ")"
+        text = str(self.nucNum) + self.nucFrom + ">" + self.nucTo
+        if self.protNum:
+            text += " (" + self.type + ": " + self.protFrom + str(self.protNum) + self.protTo + ")"
         return text
 
 
@@ -250,9 +272,9 @@ class mutationSpectrum:  # is this needed for Pedel?
 
 
 def test():
-    seq = "ATTTTGGGGAATTTTGGGGAA"
+    seq = "ATGTTGGGGAATTTTGGGGAA"
     print("Generate a mutationDNASeq instance: ", seq)
-    m = "2T>A 4T>C"
+    m = "M1L"
     print("Mutating " + str(m) + " ", MutationDNASeq(seq).mutate(m))
     #mutationSpectrum()
     print("Test complete")
