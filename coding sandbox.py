@@ -57,5 +57,17 @@ class foo2():
         return self._data
 
 
+def madness():
+    s="ABC"
+    for x in range(3):
+        for y in range(3):
+            if x>=y: #force x to be smaller
+                continue
+            else:
+                print(s[0:x]+"X"+s[x+1:y]+"Y"+s[y+1:3])
+
+
+
 if __name__ == "__main__":
-    print(foo2())
+    #print(foo2())
+    madness()
