@@ -2,15 +2,6 @@
 # -*- coding: utf-8 -*-
 # Written for python 3
 
-__author__ = 'Matteo'
-__doc__ = ''''''
-__version__ = "$Revision$"
-# $Source$
-
-N = "\n"
-T = "\t"
-# N="<br/>"
-
 from Bio.Seq import Seq
 from Bio.Alphabet import NucleotideAlphabet
 from Bio._py3k import basestring  # I am not overly sure what this does compared to str. I just copied.
@@ -18,19 +9,27 @@ from Bio.Data import CodonTable
 import re, math
 import itertools as it
 
+__author__ = 'Matteo'
+__version__ = "$Revision$"
+# $Source$
+
+N = "\n"
+T = "\t"
+# N="<br/>"
+
+
+
 __doc__ = '''
 Classes:
 * mutation
 * MutationFormatError
 * MutationDNASeq
 * mutationSpectrum
-
-
 This is a partial rewrite of mutanalyst js code. As a result a lot of attribute names are in camelCase, following JS style as opposed to PEP8.
 '''
 
 
-class Mutation():
+class Mutation:
     __doc__ = '''
     Accepts as arguments:
     * a mutation string
@@ -38,9 +37,9 @@ class Mutation():
     * (opt) forceDNA flag (def. False), if DNA is used but with protein notation
     * (opt) coding flag (def. True) to use the ref sequence as coding.
     It has the following groups of attributes:
-    * nucFrom, nucTo, nucNum: nucleotide from, to and number.
-    * protFrom, protTo, protNum: protein from, to and number
-    * codonFrom, codonTo: codon from and to
+    * from_nuc, to_nuc, num_nuc: nucleotide from, to and number.
+    * from_aa, to_aa, num_aa: protein from, to and number
+    * from_codon, to_codon: codon from and to
     * type: synonymous, non-synonymous and nonsense.
     It does not check whether the nucleotides are legitimate.
 
@@ -243,14 +242,14 @@ class Mutation():
     def __init__(self, mutation, seq=None, forceDNA=False, coding=True):
         # TODO frameshift. Read up first how one writes an insertion or deletion.
         # TODO seq should be a weak reference.
-        self.protFrom = None
-        self.protTo = None
-        self.protNum = None
-        self.codonFrom = None
-        self.codonTo = None
-        self.nucFrom = None
-        self.nucTo = None
-        self.nucNum = None
+        self.from_aa = None
+        self.to_aa = None
+        self.num_aa = None
+        self.from_codon = None
+        self.to_codon = None
+        self.from_nuc = None
+        self.to_nuc = None
+        self.num_nuc = None
         self.type = "ERROR"
         # deal with forceDNA flag
         if forceDNA:  # a hack...
@@ -265,62 +264,62 @@ class Mutation():
         rexprot = re.match("(\D)(\d+)(\D)", mutation)  # A23T
         # NUCLEOTIDE
         if rex:
-            self.nucFrom = rex.group(2)
-            self.nucTo = rex.group(3)
-            self.nucNum = int(rex.group(1))
+            self.from_nuc = rex.group(2)
+            self.to_nuc = rex.group(3)
+            self.num_nuc = int(rex.group(1))
             if seq:
-                assert seq[self.nucNum - 1] == self.nucFrom, str(self.nucNum) + " is " + seq[
-                    self.nucNum - 1] + ", not " + self.nucFrom
+                assert seq[self.num_nuc - 1] == self.from_nuc, str(self.num_nuc) + " is " + seq[
+                    self.num_nuc - 1] + ", not " + self.from_nuc
             if seq and coding:
                 translation = seq.translate()._data
-                r = math.floor(self.nucNum / 3)
-                self.protNum = r + 1
-                self.codonFrom = seq[r * 3:r * 3 + 3]._data
-                self.codonTo = seq[r * 3:self.nucNum - 1]._data + self.nucTo + seq[self.nucNum:r * 3 + 3]._data
-                self.protFrom = translation[r]
-                self.protTo = Seq(self.codonTo).translate()._data
-                if self.protFrom == self.protTo:
+                r = math.floor(self.num_nuc / 3)
+                self.num_aa = r + 1
+                self.from_codon = seq[r * 3:r * 3 + 3]._data
+                self.to_codon = seq[r * 3:self.num_nuc - 1]._data + self.to_nuc + seq[self.num_nuc:r * 3 + 3]._data
+                self.from_aa = translation[r]
+                self.to_aa = Seq(self.to_codon).translate()._data
+                if self.from_aa == self.to_aa:
                     self.type = "synonymous"
-                elif self.protTo == "*":
+                elif self.to_aa == "*":
                     self.type = "nonsense"
                 else:
                     self.type = "non-synonymous"
         # PROTEIN
         elif rexprot:
-            self.protFrom = rexprot.group(1)
-            self.protTo = rexprot.group(3)
-            self.protNum = int(rexprot.group(2))
-            if self.protTo == self.protFrom:
+            self.from_aa = rexprot.group(1)
+            self.to_aa = rexprot.group(3)
+            self.num_aa = int(rexprot.group(2))
+            if self.to_aa == self.from_aa:
                 self.type = "synonymous"  # no questions asked.
-            elif self.protTo == "*":
+            elif self.to_aa == "*":
                 self.type = "nonsense"
             else:
                 self.type = "non-synonymous"
             if seq and coding:
-                assert seq.translate()[self.protNum - 1] == self.protFrom, str(self.protNum) + " is " + seq.translate()[
-                    self.protNum - 1] + ", not " + self.protFrom
-                self.codonFrom = seq._data[(self.protNum - 1) * 3: (self.protNum - 1) * 3 + 3]
-                self.codonTo = self.codon_codex[self.codonFrom][self.protTo]
-                if self.protFrom == self.protTo: #avoid raising errors...
-                    self.nucFrom = self.codonFrom[0]
-                    self.nucTo = self.nucFrom
-                    self.nucNum = self.protNum *3
+                assert seq.translate()[self.num_aa - 1] == self.from_aa, str(self.num_aa) + " is " + seq.translate()[
+                    self.num_aa - 1] + ", not " + self.from_aa
+                self.from_codon = seq._data[(self.num_aa - 1) * 3: (self.num_aa - 1) * 3 + 3]
+                self.to_codon = self.codon_codex[self.from_codon][self.to_aa]
+                if self.from_aa == self.to_aa: #avoid raising errors...
+                    self.from_nuc = self.from_codon[0]
+                    self.to_nuc = self.from_nuc
+                    self.num_nuc = self.num_aa * 3
                 #crap. what if there are two or three mutations to make an aa change?
-                diff=[i for i in range(3) if self.codonTo[i] != self.codonFrom[i]]
-                self.nucFrom = self.codonFrom[diff[0]:diff[-1]+1]
-                self.nucTo = self.codonTo[diff[0]:diff[-1]+1]
-                self.nucNum = self.protNum * 3 -2 + diff[0]
+                diff=[i for i in range(3) if self.to_codon[i] != self.from_codon[i]]
+                self.from_nuc = self.from_codon[diff[0]:diff[-1] + 1]
+                self.to_nuc = self.to_codon[diff[0]:diff[-1] + 1]
+                self.num_nuc = self.num_aa * 3 - 2 + diff[0]
         else:
             raise MutationFormatError()
         print(self.__dict__)
 
     def apply(self, seq):
-        return seq[0:self.nucNum - 1]._data + self.nucTo + seq[self.nucNum + len(self.nucFrom)-1:]._data
+        return seq[0:self.num_nuc - 1]._data + self.to_nuc + seq[self.num_nuc + len(self.from_nuc) - 1:]._data
 
     def __str__(self):
-        text = str(self.nucNum) + self.nucFrom + ">" + self.nucTo
-        if self.protNum:
-            text += " (" + self.type + ": " + self.protFrom + str(self.protNum) + self.protTo + ")"
+        text = str(self.num_nuc) + self.from_nuc + ">" + self.to_nuc
+        if self.num_aa:
+            text += " (" + self.type + ": " + self.from_aa + str(self.num_aa) + self.to_aa + ")"
         return text
 
 
