@@ -384,21 +384,34 @@ The mutations list contains mutation objects.
         return self
 
 
-class mutationTable:
-    __doc__ = " ATGC^2 table. Basically a 2d enum"
+class MutationTable:
+    __doc__ = '''ATGC^2 table. The values are accessed with a A>C notation.
+    Due to the fact that an argument name must be a valid variable name "A>C" cannot be given as MutationTable(A>C=1), but has to be given as MutationTable({A>C: 1})
+    To access a frequency, use instance["A>C"] notation'''
 
-    def __init__(self):
-        self._data = [
+    def __init__(self,frequencies):
+        self._data = [ #A T G C
             [0, 0, 0, 0],
             [0, 0, 0, 0],
             [0, 0, 0, 0],
             [0, 0, 0, 0]
         ]
-        # GO TO HERE...
-        # figure out how the table gets in there in the first place
+        for item in frequencies:
+            if item.find(">") != -1:
+                self[item]=frequencies[item]
 
 
-class mutationSpectrum:  # is this needed for Pedel?
+    def __getitem__(self, item): #A>C  TODO allow backwards assignment alla R
+        bases={"A":0,"T":1,"G":2,"C":3}
+        (frombase,tobase)=item.upper().replace("U","T").split(">")
+        return self._data[bases[frombase]][bases[tobase]]
+
+    def __setitem__(self, item, value):
+        bases={"A":0,"T":1,"G":2,"C":3}
+        (frombase,tobase)=item.upper().replace("U","T").split(">")
+        self._data[bases[frombase]][bases[tobase]] = value
+
+class MutationSpectrum:  # is this needed for Pedel?
     __doc__ = '''Returns the mutational spectrum, an object with
     the mutation frequency,
     the base freq
@@ -430,7 +443,7 @@ class mutationSpectrum:  # is this needed for Pedel?
 
     '''
     types = ['TsOverTv', 'W2SOverS2W', 'W2N', 'S2N', 'W2S', 'S2W', 'ΣTs', 'Ts1', 'Ts2', 'ΣTv', 'TvW', 'TvN1', 'TvS',
-             'TvN2'];
+             'TvN2']
     bases = "A T G C".split()
 
     # ways=  #itertools... permutation?
@@ -548,11 +561,12 @@ def test():
     seq = "ATGTTGGGGAATTTTGGGGAA"
     # print("Generate a mutationDNASeq instance: ", seq)
     m = "G3*"
-    print("Mutating " +seq +" " + m + " ", MutationDNASeq(seq).mutate(m))
+    #print("Mutating " +seq +" " + m + " ", MutationDNASeq(seq).mutate(m))
     # mutationSpectrum()
     # print(mincodondist("ATG", "I"))  #ATH is correct answer
     #print(generateCodonCodex())  # ACG is correct answer
     # print("Test complete")
+    print(MutationTable({"A>G": 2})["A>G"])
 
 
 if __name__ == "__main__":
