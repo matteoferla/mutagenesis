@@ -240,7 +240,10 @@ class Mutation:
                 'D': 'GAC', 'I': 'ATC', 'T': 'ACC', 'R': 'CGC', 'M': 'ATG'}}
 
     def __init__(self, mutation, seq=None, forceDNA=False, coding=True):
-        # TODO frameshift. Read up first how one writes an insertion or deletion.
+        # TODO frameshift.
+        # regarding frameshifts and co. there are lots of notations (http://www.hgmd.cf.ac.uk/docs/mut_nom.html seems helpful).dels are marked with 76-78delACT or 76_78del 83^84insTG 76_77insT
+        # I'll implement one first.
+        # TODO check how unicode in code is handled when not on my machine... delta and omega would be cool.
         # TODO seq should be a weak reference.
         self.from_aa = None
         self.to_aa = None
