@@ -254,22 +254,31 @@ class Mutation:
         self.to_nuc = None
         self.num_nuc = None
         self.type = "ERROR"
+        mutation = mutation.replace("_","-") #not implemented yet
+        mutation = mutation.replace("del","\u0394") # \u0394 is uppercase delta
+        rexprotsub = re.match("(\D)(\d+)(\D)", mutation)  # A23T
+        rexnuclsub = re.match("(\d+)(\w)\>(\w)", mutation)  # 234A>T
+        rexprotdel = re.match("(\D)(\d+)\u0394", mutation)  # A23del
+        rexnucldel = re.match("(\d+)\u0394(\w?)", mutation)  # 234delA
+        rexprotmanydel = re.match("(\D)(\d+)\-(\D)(\d+)\u0394", mutation)  # A23-D24del
+        rexnuclmanydel = re.match("(\d+)\-(\d+)\u0394(\w+?)", mutation)  # 234-235delAT
         # deal with forceDNA flag
         if forceDNA:  # a hack...
-            rex = re.match("(\D)(\d+)(\D)", mutation)
-            if rex:
-                mutation = str(rex.group(2)) + str(rex.group(1)) + ">" + str(rex.group(3))
+            if rexprotsub:
+                mutation = str(rexprotsub.group(2)) + str(rexprotsub.group(1)) + ">" + str(rexprotsub.group(3))
+                rexnuclsub = re.match("(\d+)(\w)\>(\w)", mutation)
+            elif rexprotdel:
+                mutation = str(rexprotsub.group(2)) + "\u0394" + str(rexprotsub.group(1))
+                rexnucldel = re.match("(\d+)\u0394(\w?)", mutation)  # 234delA
             elif mutation.find(">") != -1:  # 234A>T
                 print('forceDNA flag called even if DNA mutation given')  # TODO warning
             else:
                 MutationFormatError()
-        rex = re.match("(\d+)(\w)\>(\w)", mutation)  # 234A>T
-        rexprot = re.match("(\D)(\d+)(\D)", mutation)  # A23T
         # NUCLEOTIDE
-        if rex:
-            self.from_nuc = rex.group(2)
-            self.to_nuc = rex.group(3)
-            self.num_nuc = int(rex.group(1))
+        if rexnuclsub:
+            self.from_nuc = rexnuclsub.group(2)
+            self.to_nuc = rexnuclsub.group(3)
+            self.num_nuc = int(rexnuclsub.group(1))
             if seq:
                 assert seq[self.num_nuc - 1] == self.from_nuc, str(self.num_nuc) + " is " + seq[
                     self.num_nuc - 1] + ", not " + self.from_nuc
@@ -287,11 +296,16 @@ class Mutation:
                     self.type = "nonsense"
                 else:
                     self.type = "non-synonymous"
+
+        #rexprotdel = re.match("(\D)(\d+)\u0394", mutation)  # A23del
+        #rexnucldel = re.match("(\d+)\u0394(\w?)", mutation)  # 234delA
+        #rexprotmanydel = re.match("(\D)(\d+)\-(\D)(\d+)\u0394", mutation)  # A23-D24del
+        #rexnuclmanydel = re.match("(\d+)\-(\d+)\u0394(\w+?)", mutation)  # 234-235delAT
         # PROTEIN
-        elif rexprot:
-            self.from_aa = rexprot.group(1)
-            self.to_aa = rexprot.group(3)
-            self.num_aa = int(rexprot.group(2))
+        elif rexprotsub:
+            self.from_aa = rexprotsub.group(1)
+            self.to_aa = rexprotsub.group(3).replace("X","*")
+            self.num_aa = int(rexprotsub.group(2))
             if self.to_aa == self.from_aa:
                 self.type = "synonymous"  # no questions asked.
             elif self.to_aa == "*":
@@ -374,14 +388,21 @@ The mutations list contains mutation objects.
         # reorganise and check mutations into a list of string
         if isinstance(mutations, str):
             mutations = mutations.split()
-        if not isinstance(mutations, list):
+        elif isinstance(mutations, Mutation):
+            mutations=[mutations]
+        elif not isinstance(mutations, list):
             raise MutationFormatError()
         for mutation in mutations:
             if not isinstance(mutation, str):
                 raise MutationFormatError()
         # parse mutations
         for mutation in mutations:
-            mut = Mutation(mutation, self, forceDNA)
+            if isinstance(mut, str):
+                mut = Mutation(mutation, self, forceDNA)
+            elif isinstance(mutations, Mutation):
+                mut = mutation
+            else:
+                raise MutationFormatError()
             self.mutations.append(mut)
             self._data = mut.apply(self)
         return self
