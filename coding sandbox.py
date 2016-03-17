@@ -70,4 +70,6 @@ def madness():
 
 if __name__ == "__main__":
     #print(foo2())
-    madness()
+    #madness()
+    import re
+    print(re.match("(\d)(\w?)","1A").group(2))

@@ -256,12 +256,12 @@ class Mutation:
         self.type = "ERROR"
         mutation = mutation.replace("_","-") #not implemented yet
         mutation = mutation.replace("del","\u0394") # \u0394 is uppercase delta
-        rexprotsub = re.match("(\D)(\d+)(\D)", mutation)  # A23T
-        rexnuclsub = re.match("(\d+)(\w)\>(\w)", mutation)  # 234A>T
-        rexprotdel = re.match("(\D)(\d+)\u0394", mutation)  # A23del
-        rexnucldel = re.match("(\d+)\u0394(\w?)", mutation)  # 234delA
-        rexprotmanydel = re.match("(\D)(\d+)\-(\D)(\d+)\u0394", mutation)  # A23-D24del
-        rexnuclmanydel = re.match("(\d+)\-(\d+)\u0394(\w+?)", mutation)  # 234-235delAT
+        rexprotsub = re.match("([A-Z])(\d+)([A-Z])", mutation)  # A23T
+        rexnuclsub = re.match("(\d+)([A-Z])\>([A-Z])", mutation)  # 234A>T
+        rexprotdel = re.match("([A-Z])(\d+)\u0394", mutation)  # A23del
+        rexnucldel = re.match("(\d+)\u0394([A-Z]?)", mutation)  # 234delA
+        rexprotmanydel = re.match("([A-Z])(\d+)\-([A-Z])(\d+)\u0394", mutation)  # A23-D24del
+        rexnuclmanydel = re.match("(\d+)\-(\d+)\u0394([A-Z]+?)", mutation)  # 234-235delAT
         # deal with forceDNA flag
         if forceDNA:  # a hack...
             if rexprotsub:
@@ -296,11 +296,25 @@ class Mutation:
                     self.type = "nonsense"
                 else:
                     self.type = "non-synonymous"
-
-        #rexprotdel = re.match("(\D)(\d+)\u0394", mutation)  # A23del
-        #rexnucldel = re.match("(\d+)\u0394(\w?)", mutation)  # 234delA
-        #rexprotmanydel = re.match("(\D)(\d+)\-(\D)(\d+)\u0394", mutation)  # A23-D24del
-        #rexnuclmanydel = re.match("(\d+)\-(\d+)\u0394(\w+?)", mutation)  # 234-235delAT
+        elif rexnucldel: #rexnucldel = re.match("(\d+)\u0394(\w?)", mutation)  # 234delA
+            self.from_nuc = rexnucldel.group(2)
+            self.to_nuc = ''
+            self.num_nuc = int(rexnucldel.group(1))
+            if seq:
+                if self.from_nuc:
+                    assert seq[self.num_nuc - 1] == self.from_nuc, str(self.num_nuc) + " is " + seq[
+                        self.num_nuc - 1] + ", not " + self.from_nuc
+                else:
+                    self.from_nuc = seq[self.num_nuc - 1]
+            if seq and coding:
+                translation = seq.translate()._data
+                r = math.floor(self.num_nuc / 3)
+                self.num_aa = r + 1
+                self.from_codon = seq[r * 3:r * 3 + 3]._data
+                self.to_codon = seq[r * 3:self.num_nuc - 1]._data + self.to_nuc + seq[self.num_nuc:r * 3 + 3]._data
+                self.from_aa = translation[r]
+                self.to_aa = Seq(self.to_codon).translate()._data  #TODO check if it is a frameshift
+                self.type = "deletion"
         # PROTEIN
         elif rexprotsub:
             self.from_aa = rexprotsub.group(1)
@@ -327,8 +341,8 @@ class Mutation:
                 self.to_nuc = self.to_codon[diff[0]:diff[-1] + 1]
                 self.num_nuc = self.num_aa * 3 - 2 + diff[0]
         else:
-            raise MutationFormatError()
-        print(self.__dict__)
+            raise MutationFormatError(str(mutation))
+        #TODO handle other cases
 
     def apply(self, seq):
         return seq[0:self.num_nuc - 1]._data + self.to_nuc + seq[self.num_nuc + len(self.from_nuc) - 1:]._data
@@ -397,7 +411,7 @@ The mutations list contains mutation objects.
                 raise MutationFormatError()
         # parse mutations
         for mutation in mutations:
-            if isinstance(mut, str):
+            if isinstance(mutation, str):
                 mut = Mutation(mutation, self, forceDNA)
             elif isinstance(mutations, Mutation):
                 mut = mutation
@@ -584,8 +598,8 @@ def generateCodonCodex():
 def test():
     seq = "ATGTTGGGGAATTTTGGGGAA"
     # print("Generate a mutationDNASeq instance: ", seq)
-    m = "G3*"
-    #print("Mutating " +seq +" " + m + " ", MutationDNASeq(seq).mutate(m))
+    m = "3del"
+    print("Mutating " +seq +" " + m + " ", MutationDNASeq(seq).mutate(m))
     # mutationSpectrum()
     # print(mincodondist("ATG", "I"))  #ATH is correct answer
     #print(generateCodonCodex())  # ACG is correct answer
