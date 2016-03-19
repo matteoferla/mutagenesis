@@ -40,7 +40,8 @@ class Mutation:
     * from_nuc, to_nuc, num_nuc: nucleotide from, to and number.
     * from_aa, to_aa, num_aa: protein from, to and number
     * from_codon, to_codon: codon from and to
-    * type: synonymous, non-synonymous and nonsense.
+    * type: synonymous, non-synonymous and nonsense, and frameshift
+    * is_substitution: true if a substitution
     It does not check whether the nucleotides are legitimate.
 
     Has also the method apply which returns a string where the mutation is applied to the Seq object (unchanged).
@@ -253,6 +254,7 @@ class Mutation:
         self.from_nuc = None
         self.to_nuc = None
         self.num_nuc = None
+        self.is_substitution=False
         self.type = "ERROR"
         mutation = mutation.replace("_","-") #not implemented yet
         mutation = mutation.replace("del","\u0394") # \u0394 is uppercase delta
@@ -276,6 +278,7 @@ class Mutation:
                 MutationFormatError()
         # NUCLEOTIDE
         if rexnuclsub:
+            self.is_substitution = True
             self.from_nuc = rexnuclsub.group(2)
             self.to_nuc = rexnuclsub.group(3)
             self.num_nuc = int(rexnuclsub.group(1))
@@ -317,6 +320,7 @@ class Mutation:
                 self.type = "deletion"
         # PROTEIN
         elif rexprotsub:
+            self.is_substitution = True
             self.from_aa = rexprotsub.group(1)
             self.to_aa = rexprotsub.group(3).replace("X","*")
             self.num_aa = int(rexprotsub.group(2))
@@ -353,6 +357,10 @@ class Mutation:
             text += " (" + self.type + ": " + self.from_aa + str(self.num_aa) + self.to_aa + ")"
         return text
 
+    def shortform(self):
+        return self.from_nuc+">"+self.to_nuc
+
+
 
 class MutationFormatError(Exception):
     message = '''Error in the parsing a mutation notation.
@@ -379,7 +387,11 @@ Different customs for nucleotide and protein are used to tell them apart:
 * 234A>T for DNA
 * A12F for protein, unless forceDNA is true. This is not yet implemented and will require special coding.
 
-The mutations list contains mutation objects.
+It has the following arguments:
+* The mutations list contains Mutation objects.
+* alphabet, always NucleotideAlphabet()
+* _data', a str accessible via str()
+* wt, a str without the mutation
 '''
 
     def __init__(self, data):
@@ -426,28 +438,43 @@ class MutationTable:
     __doc__ = '''ATGC^2 table. The values are accessed with a A>C notation.
     Due to the fact that an argument name must be a valid variable name "A>C" cannot be given as MutationTable(A>C=1), but has to be given as MutationTable({A>C: 1})
     To access a frequency, use instance["A>C"] notation'''
+    _bases={"A":0,"T":1,"G":2,"C":3}
 
-    def __init__(self,frequencies):
+    def __init__(self,frequencies=None):
         self._data = [ #A T G C
             [0, 0, 0, 0],
             [0, 0, 0, 0],
             [0, 0, 0, 0],
             [0, 0, 0, 0]
         ]
-        for item in frequencies:
-            if item.find(">") != -1:
-                self[item]=frequencies[item]
+        if frequencies:
+            for item in frequencies:
+                if item.find(">") != -1:
+                    self[item]=frequencies[item]
 
+    def _parse_input(self,item):
+        item = item.upper().replace("U","T")
+        if item.find(">"):
+            (frombase,tobase)=item.split(">")
+        elif item.find("<"):
+            (tobase,frombase)=item.split("<")
+        else:
+            raise ValueError('Only N>N or N<N forms are accepted.')
+        return (self._bases[frombase],self._bases[tobase])
 
     def __getitem__(self, item): #A>C  TODO allow backwards assignment alla R
-        bases={"A":0,"T":1,"G":2,"C":3}
-        (frombase,tobase)=item.upper().replace("U","T").split(">")
-        return self._data[bases[frombase]][bases[tobase]]
+        (from_enum,to_enum)=MutationTable._parse_input(self,item)
+        return self._data[from_enum][to_enum]
 
     def __setitem__(self, item, value):
-        bases={"A":0,"T":1,"G":2,"C":3}
-        (frombase,tobase)=item.upper().replace("U","T").split(">")
-        self._data[bases[frombase]][bases[tobase]] = value
+        (from_enum,to_enum)=MutationTable._parse_input(self,item)
+        self._data[from_enum][to_enum]  = value
+
+    def to_dict(self):
+        return {from_base+">"+to_base:self[from_base+">"+to_base] for from_base in self._bases for to_base in self._bases}
+
+    def __str__(self):
+        return str(self.to_dict())  #TODO Fix in future
 
 class MutationSpectrum:  # is this needed for Pedel?
     __doc__ = '''Returns the mutational spectrum, an object with
@@ -461,24 +488,6 @@ class MutationSpectrum:  # is this needed for Pedel?
     init from values
 
     A lot of this will be plagiarised from JS https://github.com/matteoferla/mutant_calculator/blob/master/mutationalBias.js
-    The JS is...
-    //**************************************************
-    //the mutball object.
-    //Commit and read were initially written as methods of mutball, but were moved out in order to quarantine interactions with document to the document.
-    function mutagen() {
-        var mutball = {}
-        for (b in bases) {
-            mutball["sum" + bases[b]] = "25";
-        }
-        for (b in ways) {
-            mutball[ways[b]] = "0";
-        }
-        return mutball;
-    }
-
-    time for a rethink.
-
-
     '''
     types = ['TsOverTv', 'W2SOverS2W', 'W2N', 'S2N', 'W2S', 'S2W', 'ΣTs', 'Ts1', 'Ts2', 'ΣTv', 'TvW', 'TvN1', 'TvS',
              'TvN2']
@@ -487,48 +496,78 @@ class MutationSpectrum:  # is this needed for Pedel?
     # ways=  #itertools... permutation?
 
     @classmethod
-    def fromValues(cls,
+    def from_values(cls,
                    source="loaded",
                    sequence="",
                    baseList="",
                    freqMean=0,
                    freqVar=0,
                    freqList=0,
-                   mutTable=[
-                       [0, 0, 0, 0],
-                       [0, 0, 0, 0],
-                       [0, 0, 0, 0],
-                       [0, 0, 0, 0]
-                   ],
-                   mutFreq=[  # todo check what this is called in mutanalyst.js
-                       [0, 0, 0, 0],
-                       [0, 0, 0, 0],
-                       [0, 0, 0, 0],
-                       [0, 0, 0, 0]
-                   ]
+                   mutTable=MutationTable(),
+                   mutFreq=MutationTable()  # todo check what this is called in mutanalyst.js
                    ):
-        # this method dones not check if the values are correct.
-        mut = cls.__new__(cls)
+        # todo this method dones not check if the values are correct.
         # each individually as I should assert what they are
+        mut = cls.__new__(cls)
         mut.source = source
         mut.sequence = sequence
         mut.baseList = baseList
         mut.freqMean = freqMean
         mut.freqVar = freqVar
         mut.freqList = freqList
+        return mut
 
-    @classmethod  # change to __init__
-    def fromSeqs(cls, mutationList):  # class method
-        # user gives a bunch of mutant sequences
-        raise Exception('CODE NOT WRITTEN')
-        for variant in mutationList:
+    def add_mutations(self, mutations):
+        for variant in mutations:
+            if type(variant) is str:
+                variant=Mutation(variant,forceDNA=True, seq=self.seq)
+            assert type(variant) is Mutation, str(variant) + " is not a instance of Mutation as expected. Consider MutationSpectrum.from_seqs() or MutationSpectrum.from_values()."
+            if variant.is_substitution:
+                self.mutTable[variant.shortform()] +=1
+
+    def _process_mutations_from_mutants(self, mutants):
+        self.mutations=[]
+        for variant in mutants:
             assert type(variant) is MutationDNASeq, str(variant) + " is not a instance of MutationDNASeq as expected."
+            self.mutations.extend(variant.mutations)
+            if not self.seq and variant.wt:
+                self.seq = variant.wt
+            elif variant.wt:
+                assert self.seq == variant.wt," Mutants appear to not be variants of the same wt sequence"
+        MutationSpectrum.add_mutations(self,self.mutations)
 
-    def __init__(self, ):
-        raise Exception('CODE NOT WRITTEN')
+    @classmethod
+    def from_mutation_list(cls, mutations, seq =None):  # class method
+        self = MutationSpectrum([])
+        self.seq=seq
+        self.source = "inputted from mutations"
+        self.add_mutations(mutations)
+        return self
 
-    def __getitem__(self, direction):  # as in spectrum["A>C"]? freq("A>C") better?
-        raise Exception('CODE NOT WRITTEN')
+
+    def __init__(self, mutants):
+        # user gives a bunch of mutant sequences
+        self.source="inputted from mutants"
+        self.baseList=""
+        self.freqMean=0
+        self.freqVar=0
+        self.freqList=0
+        self.mutTable=MutationTable()
+        self.mutFreq=MutationTable()
+        self.seq=None
+        MutationSpectrum._process_mutations_from_mutants(self,mutants)
+        #base frequency
+        #normalise
+        #mutation frequency
+
+    def __getitem__(self, item):
+        return self.mutFreq[item]
+
+    def __setitem__(self, item, value):
+        self.mutFreq[item] = value
+
+    def __str__(self):
+        return str(self.mutFreq)
 
 
 def mincodondist(codon,
@@ -598,13 +637,13 @@ def generateCodonCodex():
 def test():
     seq = "ATGTTGGGGAATTTTGGGGAA"
     # print("Generate a mutationDNASeq instance: ", seq)
-    m = "3del"
+    m = "2T>G"
     print("Mutating " +seq +" " + m + " ", MutationDNASeq(seq).mutate(m))
     # mutationSpectrum()
     # print(mincodondist("ATG", "I"))  #ATH is correct answer
     #print(generateCodonCodex())  # ACG is correct answer
     # print("Test complete")
-    print(MutationTable({"A>G": 2})["A>G"])
+    print(MutationSpectrum([MutationDNASeq(seq).mutate(m)]))
 
 
 if __name__ == "__main__":
