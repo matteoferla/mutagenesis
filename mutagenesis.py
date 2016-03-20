@@ -495,23 +495,47 @@ class MutationSpectrum:  # is this needed for Pedel?
 
     # ways=  #itertools... permutation?
 
+    def __init__(self, mutants):
+        # user gives a bunch of mutant sequences
+        self.source="inputted from mutants"
+        self.freqMean=0
+        self.freqVar=0
+        self.freqList=0
+        self.raw_table=MutationTable()
+        self.table=MutationTable()
+        self.seq=None
+        MutationSpectrum._process_mutations_from_mutants(self,mutants)
+        MutationSpectrum._calculate_base_frequency(self)
+        #base frequency
+        #normalise
+        #mutation frequency
+
+    def __getitem__(self, item):
+        return self.table[item]
+
+    def __setitem__(self, item, value):
+        self.table[item] = value
+
+    def __str__(self):
+        return str(self.table)
+
     @classmethod
     def from_values(cls,
                    source="loaded",
                    sequence="",
-                   baseList="",
+                   mutations=[], #TODO fix this dangerous entry
                    freqMean=0,
                    freqVar=0,
                    freqList=0,
-                   mutTable=MutationTable(),
-                   mutFreq=MutationTable()  # todo check what this is called in mutanalyst.js
+                   raw_table=MutationTable(),
+                   table=MutationTable()  # todo check what this is called in mutanalyst.js
                    ):
         # todo this method dones not check if the values are correct.
         # each individually as I should assert what they are
         mut = cls.__new__(cls)
         mut.source = source
         mut.sequence = sequence
-        mut.baseList = baseList
+        mut.mutations = mutations
         mut.freqMean = freqMean
         mut.freqVar = freqVar
         mut.freqList = freqList
@@ -523,7 +547,7 @@ class MutationSpectrum:  # is this needed for Pedel?
                 variant=Mutation(variant,forceDNA=True, seq=self.seq)
             assert type(variant) is Mutation, str(variant) + " is not a instance of Mutation as expected. Consider MutationSpectrum.from_seqs() or MutationSpectrum.from_values()."
             if variant.is_substitution:
-                self.mutTable[variant.shortform()] +=1
+                self.raw_table[variant.shortform()] +=1
 
     def _process_mutations_from_mutants(self, mutants):
         self.mutations=[]
@@ -536,6 +560,9 @@ class MutationSpectrum:  # is this needed for Pedel?
                 assert self.seq == variant.wt," Mutants appear to not be variants of the same wt sequence"
         MutationSpectrum.add_mutations(self,self.mutations)
 
+    def _calculate_base_frequency(self):
+        pass
+
     @classmethod
     def from_mutation_list(cls, mutations, seq =None):  # class method
         self = MutationSpectrum([])
@@ -543,31 +570,6 @@ class MutationSpectrum:  # is this needed for Pedel?
         self.source = "inputted from mutations"
         self.add_mutations(mutations)
         return self
-
-
-    def __init__(self, mutants):
-        # user gives a bunch of mutant sequences
-        self.source="inputted from mutants"
-        self.baseList=""
-        self.freqMean=0
-        self.freqVar=0
-        self.freqList=0
-        self.mutTable=MutationTable()
-        self.mutFreq=MutationTable()
-        self.seq=None
-        MutationSpectrum._process_mutations_from_mutants(self,mutants)
-        #base frequency
-        #normalise
-        #mutation frequency
-
-    def __getitem__(self, item):
-        return self.mutFreq[item]
-
-    def __setitem__(self, item, value):
-        self.mutFreq[item] = value
-
-    def __str__(self):
-        return str(self.mutFreq)
 
 
 def mincodondist(codon,
