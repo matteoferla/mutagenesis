@@ -66,8 +66,17 @@ def madness():
             else:
                 print(s[0:x]+"X"+s[x+1:y]+"Y"+s[y+1:3])
 
+def gen():
+    for x in "A T G C".split():
+        for y in "A T G C".split():
+            yield (x,y)
 
 
 if __name__ == "__main__":
     #print(foo2())
     #madness()
+    g=gen()
+    (a,b)=next(g)
+    print(a,b)
+    print(next(g))
+    print(next(g))

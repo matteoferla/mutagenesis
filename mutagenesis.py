@@ -289,7 +289,7 @@ class Mutation:
                     self.num_nuc - 1] + ", not " + self.from_nuc
             if seq and coding:
                 translation = seq.translate()._data
-                r = math.floor(self.num_nuc / 3)
+                r = math.floor((self.num_nuc-1) / 3)
                 self.num_aa = r + 1
                 self.from_codon = seq[r * 3:r * 3 + 3]._data
                 self.to_codon = seq[r * 3:self.num_nuc - 1]._data + self.to_nuc + seq[self.num_nuc:r * 3 + 3]._data
@@ -313,7 +313,7 @@ class Mutation:
                     self.from_nuc = seq[self.num_nuc - 1]
             if seq and coding:
                 translation = seq.translate()._data
-                r = math.floor(self.num_nuc / 3)
+                r = math.floor((self.num_nuc-1) / 3)
                 self.num_aa = r + 1
                 self.from_codon = seq[r * 3:r * 3 + 3]._data
                 self.to_codon = seq[r * 3:self.num_nuc - 1]._data + self.to_nuc + seq[self.num_nuc:r * 3 + 3]._data
@@ -486,6 +486,17 @@ class MutationTable:
     def __str__(self):
         return str(self.to_dict())  #TODO Fix in future
 
+    def __iter__(self):
+        for o in self._bases:
+            for i in self._bases:
+                yield o+">"+i
+
+    @staticmethod
+    def ibase():
+        for o in "A T G C".split():
+            for i in "A T G C".split():
+                yield (o,i)
+
 class MutationSpectrum:  # is this needed for Pedel?
     __doc__ = '''Returns the mutational spectrum, an object with
     the mutation frequency,
@@ -520,6 +531,7 @@ class MutationSpectrum:  # is this needed for Pedel?
         MutationSpectrum._process_mutations_from_mutants(self,mutants)
         MutationSpectrum._calculate_base_frequency(self)
         self.table=self.raw_table.normalize(**self.base_frequency)
+        MutationSpectrum._calculate_se_table(self)
         #mutation frequency
 
     def __getitem__(self, item):
@@ -535,7 +547,7 @@ class MutationSpectrum:  # is this needed for Pedel?
     def from_values(cls,
                    source="loaded",
                    sequence="",
-                   mutations=[], #TODO fix this dangerous entry
+                   mutations=None,
                    freqMean=0,
                    freqVar=0,
                    freqList=0,
@@ -547,7 +559,10 @@ class MutationSpectrum:  # is this needed for Pedel?
         mut = cls.__new__(cls)
         mut.source = source
         mut.sequence = sequence
-        mut.mutations = mutations
+        if mutations:
+            mut.mutations = mutations
+        else:
+            mut.mutations = []
         mut.freqMean = freqMean
         mut.freqVar = freqVar
         mut.freqList = freqList
@@ -580,6 +595,12 @@ class MutationSpectrum:  # is this needed for Pedel?
         else:
             warnings.warn("Sequence not given, default (equal base frequency) used")
 
+    def _calculate_se_table(self):
+        comp={"A":"T","T":"A","G":"C","C":"G"}
+        self.avg_table = MutationTable({b1+">"+b2: (self.table[b1+">"+b2]+self.table[comp[b1]+">"+comp[b2]])/2 for (b1, b2) in MutationTable.ibase()})
+        #JS mutball.compTable[h+x][g+y]=muts[h+x][g+y]/2 +muts[h+!x][g+!y]/2;//it actually switches the diagonal. But it's zero.
+        self.var_table = MutationTable({b1+">"+b2: sum([(self.avg_table[x]-self.table[x])**2 for x in [b1+">"+b2, comp[b1]+">"+comp[b2]]])/2 for (b1, b2) in MutationTable.ibase()})
+        self.se_table = MutationTable({math.sqrt(self.var_table[d]/2) for d in self.var_table})  #n, not n-1?
 
     @classmethod
     def from_mutation_list(cls, mutations, seq =None):  # class method
@@ -655,15 +676,14 @@ def generateCodonCodex():
             it.product("ATGC", repeat=3)}
 
 def test():
-    seq = "ATGTTGGGGAATTTTGGGGAACCC"
-    # print("Generate a mutationDNASeq instance: ", seq)
+    seq = "ATG TTG GGG AAT TTT GGG GAA CCC".replace(" ","")
     m = "2T>G"
-    print("Mutating " +seq +" " + m + " ", MutationDNASeq(seq).mutate(m))
+    #print("Mutating " +seq +" " + m + " ", MutationDNASeq(seq).mutate(m))
     # mutationSpectrum()
     # print(mincodondist("ATG", "I"))  #ATH is correct answer
     #print(generateCodonCodex())  # ACG is correct answer
     # print("Test complete")
-    print(MutationSpectrum([MutationDNASeq(seq).mutate(m)]))
+    print(MutationSpectrum([MutationDNASeq(seq).mutate(m),MutationDNASeq(seq).mutate("3G>T")]).var_table)
 
 
 if __name__ == "__main__":
