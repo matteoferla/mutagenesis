@@ -6,7 +6,9 @@ from Bio.Seq import Seq
 from Bio.Alphabet import NucleotideAlphabet
 from Bio._py3k import basestring  # I am not overly sure what this does compared to str. I just copied.
 from Bio.Data import CodonTable
-import re, math
+import re
+import math
+import warnings
 import itertools as it
 
 __author__ = 'Matteo'
@@ -413,7 +415,7 @@ It has the following arguments:
     def mutate(self, mutations, forceDNA=False):
         # reorganise and check mutations into a list of string
         if isinstance(mutations, str):
-            mutations = mutations.split()
+            mutations = mutations.replace(","," ").split()
         elif isinstance(mutations, Mutation):
             mutations=[mutations]
         elif not isinstance(mutations, list):
@@ -441,6 +443,7 @@ class MutationTable:
     _bases={"A":0,"T":1,"G":2,"C":3}
 
     def __init__(self,frequencies=None):
+        #each inner list has all the changes of a single from_base
         self._data = [ #A T G C
             [0, 0, 0, 0],
             [0, 0, 0, 0],
@@ -462,7 +465,14 @@ class MutationTable:
             raise ValueError('Only N>N or N<N forms are accepted.')
         return (self._bases[frombase],self._bases[tobase])
 
-    def __getitem__(self, item): #A>C  TODO allow backwards assignment alla R
+    def normalize(self, A=0.25, T=0.25, G=0.25, C=0.25): #returns a copy. I was not sure if to do it in place...
+        #TODO make it so that a zero base freq does not cause a div by zero.
+        freqs={"A": A, "T":T, "G":G, "C":C} #seems a bit circular...
+        norm1 = {bfrom+">"+bto: self[bfrom+">"+bto]/freqs[bfrom] for bto in self._bases for bfrom in self._bases}
+        norm2 = {d:norm1[d]/sum(norm1.values()) for d in norm1}
+        return MutationTable(norm2)
+
+    def __getitem__(self, item): #A>C or C<A... #TODO accept degenerate bases...
         (from_enum,to_enum)=MutationTable._parse_input(self,item)
         return self._data[from_enum][to_enum]
 
@@ -491,23 +501,25 @@ class MutationSpectrum:  # is this needed for Pedel?
     '''
     types = ['TsOverTv', 'W2SOverS2W', 'W2N', 'S2N', 'W2S', 'S2W', 'ΣTs', 'Ts1', 'Ts2', 'ΣTv', 'TvW', 'TvN1', 'TvS',
              'TvN2']
-    bases = "A T G C".split()
+    _bases={"A":0,"T":1,"G":2,"C":3}
 
     # ways=  #itertools... permutation?
 
     def __init__(self, mutants):
         # user gives a bunch of mutant sequences
         self.source="inputted from mutants"
+        # Mutational load
         self.freqMean=0
         self.freqVar=0
         self.freqList=0
+        # mutational spectrum
         self.raw_table=MutationTable()
-        self.table=MutationTable()
         self.seq=None
+        self.base_count=None
+        self.base_frequency={"A":0.25,"T":0.25,"G":0.25,"C":0.25}
         MutationSpectrum._process_mutations_from_mutants(self,mutants)
         MutationSpectrum._calculate_base_frequency(self)
-        #base frequency
-        #normalise
+        self.table=self.raw_table.normalize(**self.base_frequency)
         #mutation frequency
 
     def __getitem__(self, item):
@@ -561,7 +573,13 @@ class MutationSpectrum:  # is this needed for Pedel?
         MutationSpectrum.add_mutations(self,self.mutations)
 
     def _calculate_base_frequency(self):
-        pass
+        if self.seq:
+            self.base_count={b: self.seq.count(b) for b in self._bases}
+            self.base_frequency={b: self.seq.count(b)/sum(self.base_count.values()) for b in self._bases}
+            #sum(self.base_count.values()) and not len(self.seq) becuase the former loses the Ns Xs and weirdos that somehow were smuggled in.
+        else:
+            warnings.warn("Sequence not given, default (equal base frequency) used")
+
 
     @classmethod
     def from_mutation_list(cls, mutations, seq =None):  # class method
@@ -637,7 +655,7 @@ def generateCodonCodex():
             it.product("ATGC", repeat=3)}
 
 def test():
-    seq = "ATGTTGGGGAATTTTGGGGAA"
+    seq = "ATGTTGGGGAATTTTGGGGAACCC"
     # print("Generate a mutationDNASeq instance: ", seq)
     m = "2T>G"
     print("Mutating " +seq +" " + m + " ", MutationDNASeq(seq).mutate(m))
