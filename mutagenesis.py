@@ -2,14 +2,15 @@
 # -*- coding: utf-8 -*-
 # Written for python 3
 
-from Bio.Seq import Seq
-from Bio.Alphabet import NucleotideAlphabet
-from Bio._py3k import basestring  # I am not overly sure what this does compared to str. I just copied.
-from Bio.Data import CodonTable
-import re
-import math
-import warnings
 import itertools as it
+import math
+import re
+import warnings
+
+from Bio.Alphabet import NucleotideAlphabet
+from Bio.Data import CodonTable
+from Bio.Seq import Seq
+from Bio._py3k import basestring  # I am not overly sure what this does compared to str. I just copied.
 
 __author__ = 'Matteo'
 __version__ = "$Revision$"
@@ -18,18 +19,13 @@ __version__ = "$Revision$"
 N = "\n"
 T = "\t"
 # N="<br/>"
-
-
-
-__doc__ = '''
-Classes:
+__doc__ = '''Classes:
 * mutation
 * MutationFormatError
 * MutationDNASeq
 * mutationSpectrum
 This is a partial rewrite of mutanalyst js code. As a result a lot of attribute names are in camelCase, following JS style as opposed to PEP8.
 '''
-
 
 class Mutation:
     __doc__ = '''
@@ -256,10 +252,10 @@ class Mutation:
         self.from_nuc = None
         self.to_nuc = None
         self.num_nuc = None
-        self.is_substitution=False
+        self.is_substitution = False
         self.type = "ERROR"
-        mutation = mutation.replace("_","-") #not implemented yet
-        mutation = mutation.replace("del","\u0394") # \u0394 is uppercase delta
+        mutation = mutation.replace("_", "-")  # not implemented yet
+        mutation = mutation.replace("del", "\u0394")  # \u0394 is uppercase delta
         rexprotsub = re.match("([A-Z])(\d+)([A-Z])", mutation)  # A23T
         rexnuclsub = re.match("(\d+)([A-Z])\>([A-Z])", mutation)  # 234A>T
         rexprotdel = re.match("([A-Z])(\d+)\u0394", mutation)  # A23del
@@ -289,7 +285,7 @@ class Mutation:
                     self.num_nuc - 1] + ", not " + self.from_nuc
             if seq and coding:
                 translation = seq.translate()._data
-                r = math.floor((self.num_nuc-1) / 3)
+                r = math.floor((self.num_nuc - 1) / 3)
                 self.num_aa = r + 1
                 self.from_codon = seq[r * 3:r * 3 + 3]._data
                 self.to_codon = seq[r * 3:self.num_nuc - 1]._data + self.to_nuc + seq[self.num_nuc:r * 3 + 3]._data
@@ -301,7 +297,7 @@ class Mutation:
                     self.type = "nonsense"
                 else:
                     self.type = "non-synonymous"
-        elif rexnucldel: #rexnucldel = re.match("(\d+)\u0394(\w?)", mutation)  # 234delA
+        elif rexnucldel:  # rexnucldel = re.match("(\d+)\u0394(\w?)", mutation)  # 234delA
             self.from_nuc = rexnucldel.group(2)
             self.to_nuc = ''
             self.num_nuc = int(rexnucldel.group(1))
@@ -313,18 +309,18 @@ class Mutation:
                     self.from_nuc = seq[self.num_nuc - 1]
             if seq and coding:
                 translation = seq.translate()._data
-                r = math.floor((self.num_nuc-1) / 3)
+                r = math.floor((self.num_nuc - 1) / 3)
                 self.num_aa = r + 1
                 self.from_codon = seq[r * 3:r * 3 + 3]._data
                 self.to_codon = seq[r * 3:self.num_nuc - 1]._data + self.to_nuc + seq[self.num_nuc:r * 3 + 3]._data
                 self.from_aa = translation[r]
-                self.to_aa = Seq(self.to_codon).translate()._data  #TODO check if it is a frameshift
+                self.to_aa = Seq(self.to_codon).translate()._data  # TODO check if it is a frameshift
                 self.type = "deletion"
         # PROTEIN
         elif rexprotsub:
             self.is_substitution = True
             self.from_aa = rexprotsub.group(1)
-            self.to_aa = rexprotsub.group(3).replace("X","*")
+            self.to_aa = rexprotsub.group(3).replace("X", "*")
             self.num_aa = int(rexprotsub.group(2))
             if self.to_aa == self.from_aa:
                 self.type = "synonymous"  # no questions asked.
@@ -337,18 +333,18 @@ class Mutation:
                     self.num_aa - 1] + ", not " + self.from_aa
                 self.from_codon = seq._data[(self.num_aa - 1) * 3: (self.num_aa - 1) * 3 + 3]
                 self.to_codon = self.codon_codex[self.from_codon][self.to_aa]
-                if self.from_aa == self.to_aa: #avoid raising errors...
+                if self.from_aa == self.to_aa:  # avoid raising errors...
                     self.from_nuc = self.from_codon[0]
                     self.to_nuc = self.from_nuc
                     self.num_nuc = self.num_aa * 3
-                #crap. what if there are two or three mutations to make an aa change?
-                diff=[i for i in range(3) if self.to_codon[i] != self.from_codon[i]]
+                # crap. what if there are two or three mutations to make an aa change?
+                diff = [i for i in range(3) if self.to_codon[i] != self.from_codon[i]]
                 self.from_nuc = self.from_codon[diff[0]:diff[-1] + 1]
                 self.to_nuc = self.to_codon[diff[0]:diff[-1] + 1]
                 self.num_nuc = self.num_aa * 3 - 2 + diff[0]
         else:
             raise MutationFormatError(str(mutation))
-        #TODO handle other cases
+            # TODO handle other cases
 
     def apply(self, seq):
         return seq[0:self.num_nuc - 1]._data + self.to_nuc + seq[self.num_nuc + len(self.from_nuc) - 1:]._data
@@ -360,8 +356,7 @@ class Mutation:
         return text
 
     def shortform(self):
-        return self.from_nuc+">"+self.to_nuc
-
+        return self.from_nuc + ">" + self.to_nuc
 
 
 class MutationFormatError(Exception):
@@ -415,9 +410,9 @@ It has the following arguments:
     def mutate(self, mutations, forceDNA=False):
         # reorganise and check mutations into a list of string
         if isinstance(mutations, str):
-            mutations = mutations.replace(","," ").split()
+            mutations = mutations.replace(",", " ").split()
         elif isinstance(mutations, Mutation):
-            mutations=[mutations]
+            mutations = [mutations]
         elif not isinstance(mutations, list):
             raise MutationFormatError()
         for mutation in mutations:
@@ -440,11 +435,11 @@ class MutationTable:
     __doc__ = '''ATGC^2 table. The values are accessed with a A>C notation.
     Due to the fact that an argument name must be a valid variable name "A>C" cannot be given as MutationTable(A>C=1), but has to be given as MutationTable({A>C: 1})
     To access a frequency, use instance["A>C"] notation'''
-    _bases={"A":0,"T":1,"G":2,"C":3}
+    _bases = {"A": 0, "T": 1, "G": 2, "C": 3}
 
-    def __init__(self,frequencies=None):
-        #each inner list has all the changes of a single from_base
-        self._data = [ #A T G C
+    def __init__(self, frequencies=None):
+        # each inner list has all the changes of a single from_base
+        self._data = [  # A T G C
             [0, 0, 0, 0],
             [0, 0, 0, 0],
             [0, 0, 0, 0],
@@ -453,49 +448,52 @@ class MutationTable:
         if frequencies:
             for item in frequencies:
                 if item.find(">") != -1:
-                    self[item]=frequencies[item]
+                    self[item] = frequencies[item]
 
-    def _parse_input(self,item):
-        item = item.upper().replace("U","T")
+    def _parse_input(self, item):
+        item = item.upper().replace("U", "T")
         if item.find(">"):
-            (frombase,tobase)=item.split(">")
+            (frombase, tobase) = item.split(">")
         elif item.find("<"):
-            (tobase,frombase)=item.split("<")
+            (tobase, frombase) = item.split("<")
         else:
             raise ValueError('Only N>N or N<N forms are accepted.')
-        return (self._bases[frombase],self._bases[tobase])
+        return (self._bases[frombase], self._bases[tobase])
 
-    def normalize(self, A=0.25, T=0.25, G=0.25, C=0.25): #returns a copy. I was not sure if to do it in place...
-        #TODO make it so that a zero base freq does not cause a div by zero.
-        freqs={"A": A, "T":T, "G":G, "C":C} #seems a bit circular...
-        norm1 = {bfrom+">"+bto: self[bfrom+">"+bto]/freqs[bfrom] for bto in self._bases for bfrom in self._bases}
-        norm2 = {d:norm1[d]/sum(norm1.values()) for d in norm1}
+    def normalize(self, A=0.25, T=0.25, G=0.25, C=0.25):  # returns a copy. I was not sure if to do it in place...
+        # TODO make it so that a zero base freq does not cause a div by zero.
+        freqs = {"A": A, "T": T, "G": G, "C": C}  # seems a bit circular...
+        norm1 = {bfrom + ">" + bto: self[bfrom + ">" + bto] / freqs[bfrom] for bto in self._bases for bfrom in
+                 self._bases}
+        norm2 = {d: norm1[d] / sum(norm1.values()) for d in norm1}
         return MutationTable(norm2)
 
-    def __getitem__(self, item): #A>C or C<A... #TODO accept degenerate bases...
-        (from_enum,to_enum)=MutationTable._parse_input(self,item)
+    def __getitem__(self, item):  # A>C or C<A... #TODO accept degenerate bases...
+        (from_enum, to_enum) = MutationTable._parse_input(self, item)
         return self._data[from_enum][to_enum]
 
     def __setitem__(self, item, value):
-        (from_enum,to_enum)=MutationTable._parse_input(self,item)
-        self._data[from_enum][to_enum]  = value
+        (from_enum, to_enum) = MutationTable._parse_input(self, item)
+        self._data[from_enum][to_enum] = value
 
     def to_dict(self):
-        return {from_base+">"+to_base:self[from_base+">"+to_base] for from_base in self._bases for to_base in self._bases}
+        return {from_base + ">" + to_base: self[from_base + ">" + to_base] for from_base in self._bases for to_base in
+                self._bases}
 
     def __str__(self):
-        return str(self.to_dict())  #TODO Fix in future
+        return str(self.to_dict())  # TODO Fix in future
 
     def __iter__(self):
         for o in self._bases:
             for i in self._bases:
-                yield o+">"+i
+                yield o + ">" + i
 
     @staticmethod
     def ibase():
         for o in "A T G C".split():
             for i in "A T G C".split():
-                yield (o,i)
+                yield (o, i)
+
 
 class MutationSpectrum:  # is this needed for Pedel?
     __doc__ = '''Returns the mutational spectrum, an object with
@@ -512,27 +510,27 @@ class MutationSpectrum:  # is this needed for Pedel?
     '''
     types = ['TsOverTv', 'W2SOverS2W', 'W2N', 'S2N', 'W2S', 'S2W', 'ΣTs', 'Ts1', 'Ts2', 'ΣTv', 'TvW', 'TvN1', 'TvS',
              'TvN2']
-    _bases={"A":0,"T":1,"G":2,"C":3}
+    _bases = {"A": 0, "T": 1, "G": 2, "C": 3}
 
     # ways=  #itertools... permutation?
 
     def __init__(self, mutants):
         # user gives a bunch of mutant sequences
-        self.source="inputted from mutants"
+        self.source = "inputted from mutants"
         # Mutational load
-        self.freqMean=0
-        self.freqVar=0
-        self.freqList=0
+        self.freqMean = 0
+        self.freqVar = 0
+        self.freqList = 0
         # mutational spectrum
-        self.raw_table=MutationTable()
-        self.seq=None
-        self.base_count=None
-        self.base_frequency={"A":0.25,"T":0.25,"G":0.25,"C":0.25}
-        MutationSpectrum._process_mutations_from_mutants(self,mutants)
+        self.raw_table = MutationTable()
+        self.seq = None
+        self.base_count = None
+        self.base_frequency = {"A": 0.25, "T": 0.25, "G": 0.25, "C": 0.25}
+        MutationSpectrum._process_mutations_from_mutants(self, mutants)
         MutationSpectrum._calculate_base_frequency(self)
-        self.table=self.raw_table.normalize(**self.base_frequency)
+        self.table = self.raw_table.normalize(**self.base_frequency)
         MutationSpectrum._calculate_se_table(self)
-        #mutation frequency
+        # mutation frequency
 
     def __getitem__(self, item):
         return self.table[item]
@@ -545,15 +543,15 @@ class MutationSpectrum:  # is this needed for Pedel?
 
     @classmethod
     def from_values(cls,
-                   source="loaded",
-                   sequence="",
-                   mutations=None,
-                   freqMean=0,
-                   freqVar=0,
-                   freqList=0,
-                   raw_table=MutationTable(),
-                   table=MutationTable()  # todo check what this is called in mutanalyst.js
-                   ):
+                    source="loaded",
+                    sequence="",
+                    mutations=None,
+                    freqMean=0,
+                    freqVar=0,
+                    freqList=0,
+                    raw_table=MutationTable(),
+                    table=MutationTable()  # todo check what this is called in mutanalyst.js
+                    ):
         # todo this method dones not check if the values are correct.
         # each individually as I should assert what they are
         mut = cls.__new__(cls)
@@ -571,41 +569,46 @@ class MutationSpectrum:  # is this needed for Pedel?
     def add_mutations(self, mutations):
         for variant in mutations:
             if type(variant) is str:
-                variant=Mutation(variant,forceDNA=True, seq=self.seq)
-            assert type(variant) is Mutation, str(variant) + " is not a instance of Mutation as expected. Consider MutationSpectrum.from_seqs() or MutationSpectrum.from_values()."
+                variant = Mutation(variant, forceDNA=True, seq=self.seq)
+            assert type(variant) is Mutation, str(
+                variant) + " is not a instance of Mutation as expected. Consider MutationSpectrum.from_seqs() or MutationSpectrum.from_values()."
             if variant.is_substitution:
-                self.raw_table[variant.shortform()] +=1
+                self.raw_table[variant.shortform()] += 1
 
     def _process_mutations_from_mutants(self, mutants):
-        self.mutations=[]
+        self.mutations = []
         for variant in mutants:
             assert type(variant) is MutationDNASeq, str(variant) + " is not a instance of MutationDNASeq as expected."
             self.mutations.extend(variant.mutations)
             if not self.seq and variant.wt:
                 self.seq = variant.wt
             elif variant.wt:
-                assert self.seq == variant.wt," Mutants appear to not be variants of the same wt sequence"
-        MutationSpectrum.add_mutations(self,self.mutations)
+                assert self.seq == variant.wt, " Mutants appear to not be variants of the same wt sequence"
+        MutationSpectrum.add_mutations(self, self.mutations)
 
     def _calculate_base_frequency(self):
         if self.seq:
-            self.base_count={b: self.seq.count(b) for b in self._bases}
-            self.base_frequency={b: self.seq.count(b)/sum(self.base_count.values()) for b in self._bases}
-            #sum(self.base_count.values()) and not len(self.seq) becuase the former loses the Ns Xs and weirdos that somehow were smuggled in.
+            self.base_count = {b: self.seq.count(b) for b in self._bases}
+            self.base_frequency = {b: self.seq.count(b) / sum(self.base_count.values()) for b in self._bases}
+            # sum(self.base_count.values()) and not len(self.seq) becuase the former loses the Ns Xs and weirdos that somehow were smuggled in.
         else:
             warnings.warn("Sequence not given, default (equal base frequency) used")
 
     def _calculate_se_table(self):
-        comp={"A":"T","T":"A","G":"C","C":"G"}
-        self.avg_table = MutationTable({b1+">"+b2: (self.table[b1+">"+b2]+self.table[comp[b1]+">"+comp[b2]])/2 for (b1, b2) in MutationTable.ibase()})
-        #JS mutball.compTable[h+x][g+y]=muts[h+x][g+y]/2 +muts[h+!x][g+!y]/2;//it actually switches the diagonal. But it's zero.
-        self.var_table = MutationTable({b1+">"+b2: sum([(self.avg_table[x]-self.table[x])**2 for x in [b1+">"+b2, comp[b1]+">"+comp[b2]]])/2 for (b1, b2) in MutationTable.ibase()})
-        self.se_table = MutationTable({math.sqrt(self.var_table[d]/2) for d in self.var_table})  #n, not n-1?
+        comp = {"A": "T", "T": "A", "G": "C", "C": "G"}
+        self.avg_table = MutationTable(
+            {b1 + ">" + b2: (self.table[b1 + ">" + b2] + self.table[comp[b1] + ">" + comp[b2]]) / 2 for (b1, b2) in
+             MutationTable.ibase()})
+        # JS mutball.compTable[h+x][g+y]=muts[h+x][g+y]/2 +muts[h+!x][g+!y]/2;//it actually switches the diagonal. But it's zero.
+        self.var_table = MutationTable({b1 + ">" + b2: sum(
+            [(self.avg_table[x] - self.table[x]) ** 2 for x in [b1 + ">" + b2, comp[b1] + ">" + comp[b2]]]) / 2 for
+                                        (b1, b2) in MutationTable.ibase()})
+        self.se_table = MutationTable({math.sqrt(self.var_table[d] / 2) for d in self.var_table})  # n, not n-1?
 
     @classmethod
-    def from_mutation_list(cls, mutations, seq =None):  # class method
+    def from_mutation_list(cls, mutations, seq=None):  # class method
         self = MutationSpectrum([])
-        self.seq=seq
+        self.seq = seq
         self.source = "inputted from mutations"
         self.add_mutations(mutations)
         return self
@@ -675,15 +678,16 @@ def generateCodonCodex():
     return {"".join(codon): {aa: mincodondist("".join(codon), aa) for aa in aas} for codon in
             it.product("ATGC", repeat=3)}
 
+
 def test():
-    seq = "ATG TTG GGG AAT TTT GGG GAA CCC".replace(" ","")
+    seq = "ATG TTG GGG AAT TTT GGG GAA CCC".replace(" ", "")
     m = "2T>G"
-    #print("Mutating " +seq +" " + m + " ", MutationDNASeq(seq).mutate(m))
+    # print("Mutating " +seq +" " + m + " ", MutationDNASeq(seq).mutate(m))
     # mutationSpectrum()
     # print(mincodondist("ATG", "I"))  #ATH is correct answer
-    #print(generateCodonCodex())  # ACG is correct answer
+    # print(generateCodonCodex())  # ACG is correct answer
     # print("Test complete")
-    print(MutationSpectrum([MutationDNASeq(seq).mutate(m),MutationDNASeq(seq).mutate("3G>T")]).var_table)
+    print(MutationSpectrum([MutationDNASeq(seq).mutate(m), MutationDNASeq(seq).mutate("3G>T")]).var_table)
 
 
 if __name__ == "__main__":
