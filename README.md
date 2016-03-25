@@ -16,26 +16,20 @@ The mutations list contains mutation objects.
 # Help
 For now The help is
 
-NAME
-    mutagenesis
+# NAME
+mutagenesis
 
-DESCRIPTION
-    Classes:
-    * mutation
-    * MutationFormatError
-    * MutationDNASeq
-    * mutationSpectrum
-    This is a partial rewrite of mutanalyst js code. As a result a lot of attribute names are in camelCase, following JS style as opposed to PEP8.
+# DESCRIPTION
+Classes:
 
-CLASSES
-    Bio.Seq.Seq(builtins.object)
-        MutationDNASeq
-    builtins.Exception(builtins.BaseException)
-        MutationFormatError
-    builtins.object
-        Mutation
-        MutationSpectrum
-        MutationTable
+* mutation
+* MutationFormatError
+* MutationDNASeq
+* mutationSpectrum
+
+This is a partial rewrite of mutanalyst js code. As a result a lot of attribute names are in camelCase, following JS style as opposed to PEP8.
+
+# CLASSES
     
     class Mutation(builtins.object)
      |  Accepts as arguments:
