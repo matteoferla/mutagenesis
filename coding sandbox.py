@@ -52,31 +52,16 @@ class foo2():
 
     def __init__(self):
         self.mymethod()
+        foo2.mymethod2(self)
 
     def __str__(self):
         return self._data
 
+    def mymethod2(self):
+        self._data+="_method2"
 
-def madness():
-    s="ABC"
-    for x in range(3):
-        for y in range(3):
-            if x>=y: #force x to be smaller
-                continue
-            else:
-                print(s[0:x]+"X"+s[x+1:y]+"Y"+s[y+1:3])
 
-def gen():
-    for x in "A T G C".split():
-        for y in "A T G C".split():
-            yield (x,y)
 
 
 if __name__ == "__main__":
-    #print(foo2())
-    #madness()
-    g=gen()
-    (a,b)=next(g)
-    print(a,b)
-    print(next(g))
-    print(next(g))
+    print(foo2())
