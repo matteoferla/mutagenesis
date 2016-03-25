@@ -13,9 +13,9 @@ from Bio.Seq import Seq
 from Bio._py3k import basestring  # I am not overly sure what this does compared to str. I just copied.
 
 __author__ = 'Matteo'
-__version__ = "$Revision$"
-# $Source$
+__version__ = "N/A"
 
+# This sloppiness will be refactored out once finished.
 N = "\n"
 T = "\t"
 # N="<br/>"
@@ -492,9 +492,21 @@ class MutationTable:
             for i in "A T G C".split():
                 yield (o, i)
 
+class MutationLoad:
+    """Calculates the mutational load of a pool of mutants.
+    It assumes it is from a simple amplification reaction, however a sum of two ind. Poisson distributions is a Poisson, so if two samples were pooled the lamdba would be the same.
+
+
+                    freqMean=0,
+                    freqVar=0,
+                    freqList=0,
+    """
+    pass
+
+
 
 class MutationSpectrum:  # is this needed for Pedel?
-    """Returns the mutational spectrum, an object with
+    """Returns the mutational spectrum of a pool of mutants, an object with
     the mutation frequency,
     the base freq
     the SE of the mut freq
@@ -528,6 +540,7 @@ class MutationSpectrum:  # is this needed for Pedel?
         MutationSpectrum._calculate_base_frequency(self)
         self.table = self.raw_table.normalize(**self.base_frequency)
         MutationSpectrum._calculate_se_table(self)
+        MutationSpectrum._calculate_advanced(self)
         # mutation frequency
 
     def __getitem__(self, item):
@@ -544,9 +557,6 @@ class MutationSpectrum:  # is this needed for Pedel?
                     source="loaded",
                     sequence="",
                     mutations=None,
-                    freqMean=0,
-                    freqVar=0,
-                    freqList=0,
                     raw_table=MutationTable(),
                     table=MutationTable()  # todo check what this is called in mutanalyst.js
                     ):
@@ -559,9 +569,6 @@ class MutationSpectrum:  # is this needed for Pedel?
             mut.mutations = mutations
         else:
             mut.mutations = []
-        mut.freqMean = freqMean
-        mut.freqVar = freqVar
-        mut.freqList = freqList
         return mut
 
     def add_mutations(self, mutations):
@@ -601,7 +608,12 @@ class MutationSpectrum:  # is this needed for Pedel?
         self.var_table = MutationTable({b1 + ">" + b2: sum(
             [(self.avg_table[x] - self.table[x]) ** 2 for x in [b1 + ">" + b2, comp[b1] + ">" + comp[b2]]]) / 2 for
                                         (b1, b2) in MutationTable.ibase()})
-        self.se_table = MutationTable({math.sqrt(self.var_table[d] / 2) for d in self.var_table})  # n, not n-1?
+        self.se_table = MutationTable({d: math.sqrt(self.var_table[d] / 2) for d in self.var_table})  # n, not n-1?
+
+    def _calculate_advanced(self):  #UNFINISHED
+        pass
+
+
 
     @classmethod
     def from_mutation_list(cls, mutations, seq=None):  # class method
@@ -612,8 +624,97 @@ class MutationSpectrum:  # is this needed for Pedel?
         return self
 
 
+
+
+class NumSEM:
+    """
+    A class to handle numbers with SEM.
+    I am not sure why there is nothing that does this and whether this is the best way of doing.
+    For now errors are propagated parametrically based on the maths I discuss in [mutanalyst](http://www.mutanalyst.com/)
+    """
+    def __init__(self,num,sem, df=2):
+        """
+        :param num: the number (mean)
+        :param sem: the standard error
+        :param df: the number of samples used to determine the SE
+        :return: an object with the three inputs as _num, _sem and _df attributes.
+        """
+        self._num=float(num)
+        self._sem=float(sem)
+        self._df=int(df)
+
+    def __str__(self):
+        return str(self._num)+"±"+str(self._sem)
+
+    def __add__(self, other):
+        """
+        Returns the addition of either two NumSEM objects or a NumSEM and a float/int
+        :param other: NumSEM or int or float
+        :return: a new NumSEM instance where the variance is based on the Binaymé rule if both NumSEM.
+        """
+        if type(other) is NumSEM:
+            v=NumSEM._var(self) + NumSEM._var(other)
+            df=NumSEM._df(self._df,other._df)
+            return NumSEM(self._num+other._num,math.sqrt(v/df),df)
+        else: #assume int or float
+            return NumSEM(self._num+other,self._sem,self._df)
+
+    def __sub__(self,other):
+        """
+        Returns the subtraction of either two NumSEM objects or a NumSEM and a float/int
+        :param other: NumSEM or int or float
+        :return: a new NumSEM instance where the variance is based on the Binaymé rule (var summed) if both NumSEM.
+        """
+        if type(other) is NumSEM:
+            v=NumSEM._var(self) + NumSEM._var(other)
+            df=NumSEM._df(self._df,other._df)
+            return NumSEM(self._num-other._num,math.sqrt(v/df),df)
+        else: #assume int or float
+            return NumSEM(self._num-other,self._sem,self._df)
+
+    def __mul__(self, other):
+        """
+        Returns the mutiplication of either two NumSEM objects or a NumSEM and a float/int
+        :param other: NumSEM or int or float
+        :return: a new NumSEM instance where, if both NumSEM, the variance is the var(x)/mean(x)^2 + var(y)/mean(y)^2.
+        The latter formula stems from the first order Taylor approximation of the König–Huygens theorem applied to a function:
+        > Var(f(x))\approx [f'(x)]^2 · Var(x)
+        And converting Var(xy) to Var(e^ln(xy)) and solving.
+        > Var(e^ln(xy)) = (e^ln(xy))^2 · Var(ln(xy)) = x^2 · y^2 · (Var(ln(x))+Var(ln(y))) = x^2 · y^2 · (Var(x)/x^2+Var(y)/y^2) _etc._
+        """
+        if type(other) is NumSEM:
+            v= NumSEM._var(self) * other._num**2 +  NumSEM._var(other) * self._num**2
+            df=NumSEM._df(self._df,other._df)
+            return NumSEM(self._num*other._num,math.sqrt(v/df),df)
+
+    def __truediv__(self, other):
+        """
+        Same principle as multiplication
+        :param other: NumSEM or int or float
+        :return: a new NumSEM instance where, if both NumSEM, the variance is the var(x)/mean(y)^2 + var(y)*mean(x)^2/mean(y)^4.
+        """
+        if type(other) is NumSEM:
+            v= NumSEM._var(self) / other._num**2 +  NumSEM._var(other) * self._num**2  / other._num**4
+            df=NumSEM._df(self._df,other._df)
+            return NumSEM(self._num/other._num,math.sqrt(v/df),df)
+
+    def _var(self):
+        return self._sem**2*self._df
+
+    @staticmethod
+    def _df(a,b):
+        return min(a,b) #I am unsure if min is best, hence the method. I assume that the worst case scenario is the smallest.
+        # Also it is not degrees of freedom but sample size...
+
+
 def mincodondist(codon,
                  aa):  # there must be a more elegant way, but this will do. Serine and stop are the problematic ones.
+    """
+    This method is called solely by generateCodonCodex, which is here just to show how the codoncodex dictionary was made.
+    :param codon: a string of three characters corresponding to the starting codon
+    :param aa: a string of a letter corresponsponding to the target AA
+    :return: the degenerate codon needed to reach that AA from that codon.
+    """
     standard_table = CodonTable.unambiguous_dna_by_name["Standard"]
     ft = standard_table.forward_table
     ft["TAA"] = "*"
@@ -669,7 +770,6 @@ def mincodondist(codon,
             "I": "ATH", "M": "ATG", "L": "CTN", "K": "AAR", "F": "TTY", "P": "CCN", "S": "TCN", "T": "ACN", "W": "TGG",
             "Y": "TAY", "V": "GTN", "*": "TAR"}[aa]
 
-
 def generateCodonCodex():
     """To find the mutation from a codon to encode a different AA a pregenerate dictionary is needed.
     This is here for reference."""
@@ -686,8 +786,9 @@ def test():
     # print(mincodondist("ATG", "I"))  #ATH is correct answer
     # print(generateCodonCodex())  # ACG is correct answer
     # print("Test complete")
-    print(MutationSpectrum([MutationDNASeq(seq).mutate(m), MutationDNASeq(seq).mutate("3G>T")]).var_table)
+    #print(MutationSpectrum([MutationDNASeq(seq).mutate(m), MutationDNASeq(seq).mutate("3G>T")]).var_table)
 
 
 if __name__ == "__main__":
     test()
+    # TODO mutational load
