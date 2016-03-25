@@ -14,7 +14,7 @@ Different customs for nucleotide and protein are used to tell them apart:
 The mutations list contains mutation objects.
 
 # Help
-For now The help is
+For now the help is a dumped pydoc....
 
 # NAME
 mutagenesis

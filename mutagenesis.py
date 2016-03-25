@@ -19,17 +19,16 @@ __version__ = "$Revision$"
 N = "\n"
 T = "\t"
 # N="<br/>"
-__doc__ = '''Classes:
+"""Classes:
 * mutation
 * MutationFormatError
 * MutationDNASeq
 * mutationSpectrum
 This is a partial rewrite of mutanalyst js code. As a result a lot of attribute names are in camelCase, following JS style as opposed to PEP8.
-'''
+"""
 
 class Mutation:
-    __doc__ = '''
-    Accepts as arguments:
+    """Accepts as arguments:
     * a mutation string
     * (opt) Seq object
     * (opt) forceDNA flag (def. False), if DNA is used but with protein notation
@@ -43,7 +42,7 @@ class Mutation:
     It does not check whether the nucleotides are legitimate.
 
     Has also the method apply which returns a string where the mutation is applied to the Seq object (unchanged).
-    '''
+    """
     codon_codex = {
         'ATG': {'N': 'AAY', 'P': 'CCG', 'W': 'TGG', 'K': 'AAG', 'H': 'CAY', 'Q': 'CAG', 'S': 'TCG', 'Y': 'TAY',
                 'V': 'GTG', '*': 'TAG', 'F': 'TTY', 'C': 'TGY', 'A': 'GCG', 'E': 'GAG', 'G': 'GGG', 'L': 'YTG',
@@ -360,10 +359,10 @@ class Mutation:
 
 
 class MutationFormatError(Exception):
-    message = '''Error in the parsing a mutation notation.
+    """Error in the parsing a mutation notation.
     A mutation should be written as 123A>T for nucleotide or W45T for protein.
     If the method accepts multiple mutations, they should be separated with a space or as a list.
-    '''
+    """
 
     def __init__(self, value=None):
         self.value = value
@@ -376,26 +375,25 @@ class MutationFormatError(Exception):
 
 
 class MutationDNASeq(Seq):
-    __doc__ = '''A variant of the seq class, but with the method mutate and the attribute mutations.
+    """A variant of the seq class, but with the method mutate and the attribute mutations.
     Also accepts a Seq object in addition to a string for the sequence.
 
-method mutate(): mutates the sequence based on the  mutations, expressed as a string with spaces or list of strings.
-Different customs for nucleotide and protein are used to tell them apart:
-* 234A>T for DNA
-* A12F for protein, unless forceDNA is true. This is not yet implemented and will require special coding.
+    method mutate(): mutates the sequence based on the  mutations, expressed as a string with spaces or list of strings.
+    Different customs for nucleotide and protein are used to tell them apart:
+    * 234A>T for DNA
+    * A12F for protein, unless forceDNA is true. This is not yet implemented and will require special coding.
 
-It has the following arguments:
-* The mutations list contains Mutation objects.
-* alphabet, always NucleotideAlphabet()
-* _data', a str accessible via str()
-* wt, a str without the mutation
-'''
+    It has the following arguments:
+    * The mutations list contains Mutation objects.
+    * alphabet, always NucleotideAlphabet()
+    * _data', a str accessible via str()
+    * wt, a str without the mutation
+    """
 
-    def __init__(self, data):
-        # TODO For now only DNA. In future translate and replace AA.
-        __doc__ = '''This is just a copy of the Bio.Seq.Seq.__init__ method with the difference that
+    def __init__(self, data): # TODO For now only DNA. In future translate and replace AA.
+        """This is just a copy of the Bio.Seq.Seq.__init__ method with the difference that
         * it can only be nucleotide
-        * data can be string or Seq'''
+        * data can be string or Seq"""
         if isinstance(data, Seq):
             self._data = data._data
             # TODO assert if nucleotide
@@ -432,9 +430,9 @@ It has the following arguments:
 
 
 class MutationTable:
-    __doc__ = '''ATGC^2 table. The values are accessed with a A>C notation.
+    """ATGC^2 table. The values are accessed with a A>C notation.
     Due to the fact that an argument name must be a valid variable name "A>C" cannot be given as MutationTable(A>C=1), but has to be given as MutationTable({A>C: 1})
-    To access a frequency, use instance["A>C"] notation'''
+    To access a frequency, use instance["A>C"] notation"""
     _bases = {"A": 0, "T": 1, "G": 2, "C": 3}
 
     def __init__(self, frequencies=None):
@@ -496,7 +494,7 @@ class MutationTable:
 
 
 class MutationSpectrum:  # is this needed for Pedel?
-    __doc__ = '''Returns the mutational spectrum, an object with
+    """Returns the mutational spectrum, an object with
     the mutation frequency,
     the base freq
     the SE of the mut freq
@@ -507,7 +505,7 @@ class MutationSpectrum:  # is this needed for Pedel?
     init from values
 
     A lot of this will be plagiarised from JS https://github.com/matteoferla/mutant_calculator/blob/master/mutationalBias.js
-    '''
+    """
     types = ['TsOverTv', 'W2SOverS2W', 'W2N', 'S2N', 'W2S', 'S2W', 'ΣTs', 'Ts1', 'Ts2', 'ΣTv', 'TvW', 'TvN1', 'TvS',
              'TvN2']
     _bases = {"A": 0, "T": 1, "G": 2, "C": 3}
@@ -673,7 +671,8 @@ def mincodondist(codon,
 
 
 def generateCodonCodex():
-    __doc__ = "To find the mutation from a codon to encode a different AA a pregenerate dictionary is needed. This is here for reference."
+    """To find the mutation from a codon to encode a different AA a pregenerate dictionary is needed.
+    This is here for reference."""
     aas = set("A R N D C Q E G H I L K M F P S T W Y V *".split())
     return {"".join(codon): {aa: mincodondist("".join(codon), aa) for aa in aas} for codon in
             it.product("ATGC", repeat=3)}
