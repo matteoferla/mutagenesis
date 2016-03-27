@@ -480,7 +480,7 @@ class MutationTable:
                 self._bases}
 
     def __str__(self):
-        return str(self.to_dict())  # TODO Fix in future
+        return str(self.to_dict())  # TODO Fix in future. Ordereddictionary
 
     def __iter__(self):
         for o in self._bases:
