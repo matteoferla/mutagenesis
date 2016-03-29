@@ -451,9 +451,9 @@ class MutationTable:
 
     def _parse_input(self, item):
         item = item.upper().replace("U", "T")
-        if item.find(">"):
+        if item.find(">") == 1:
             (frombase, tobase) = item.split(">")
-        elif item.find("<"):
+        elif item.find("<") == 1:
             (tobase, frombase) = item.split("<")
         else:
             raise ValueError('Only N>N or N<N forms are accepted.')
@@ -468,11 +468,11 @@ class MutationTable:
         return MutationTable(norm2)
 
     def __getitem__(self, item):  # A>C or C<A... #TODO accept degenerate bases...
-        (from_enum, to_enum) = MutationTable._parse_input(self, item)
+        (from_enum, to_enum) = self._parse_input(item)
         return self._data[from_enum][to_enum]
 
     def __setitem__(self, item, value):
-        (from_enum, to_enum) = MutationTable._parse_input(self, item)
+        (from_enum, to_enum) = self._parse_input(item)
         self._data[from_enum][to_enum] = value
 
     def to_dict(self):
@@ -503,15 +503,33 @@ class MutationLoad:
                     freqVar=0,
                     freqList=0,
     """
-    pass
+    def __init__(self,mutants):
+        self.mutation_tally = []
+        for variant in mutants:
+            assert type(variant) is MutationDNASeq, str(variant) + " is not a instance of MutationDNASeq as expected."
+            self.mutation_tally.append(len(self.mutations))
+            if not self.seq and variant.wt:
+                self.seq = variant.wt
+            elif variant.wt:
+                assert self.seq == variant.wt, " Mutants appear to not be variants of the same wt sequence"
+        self.add_mutations(self.mutations)
+
 
 
 class MutationSpectrum:  # is this needed for Pedel?
-    """Returns the mutational spectrum of a pool of mutants, an object with
-    the mutation frequency,
-    the base freq
-    the SE of the mut freq
-    the mutational rate
+    """Returns the mutational spectrum of a pool of mutants, an object that can be accessed with the "N>N" or "N<N" index notation,
+    __E.g.__ `spectrum_instance["A>T"]`, like MutationTable, but has also derived keys such as `spectrum_instance["S>N"]`.
+    I has the following attributes:
+
+    * `raw_table`, A MutationTable (int) with the raw values
+    * `seq`, the wt sequences of the mutants (has to be common)
+    * `base_count`, the base count of seq
+    * `base_freq`, the base frequency
+    * `table`, the normalised table (MutationTable of floats)
+    * `avg_table`, the normalised table averaged based on strand equivalent mutations
+    * `var_table`, the variance of the above
+    * `se_table`, the standard error
+    * `_data`, where the dictionary (not MutationTable) of NumSEM values is stored.
 
 
     class method from sequences
@@ -519,8 +537,6 @@ class MutationSpectrum:  # is this needed for Pedel?
 
     A lot of this will be plagiarised from JS https://github.com/matteoferla/mutant_calculator/blob/master/mutationalBias.js
     """
-    types = ['TsOverTv', 'W2SOverS2W', 'W2N', 'S2N', 'W2S', 'S2W', 'ΣTs', 'Ts1', 'Ts2', 'ΣTv', 'TvW', 'TvN1', 'TvS',
-             'TvN2']
     _bases = {"A": 0, "T": 1, "G": 2, "C": 3}
 
     # ways=  #itertools... permutation?
@@ -528,10 +544,6 @@ class MutationSpectrum:  # is this needed for Pedel?
     def __init__(self, mutants):
         # user gives a bunch of mutant sequences
         self.source = "inputted from mutants"
-        # Mutational load
-        self.freqMean = 0
-        self.freqVar = 0
-        self.freqList = 0
         # mutational spectrum
         self.raw_table = MutationTable()
         self.seq = None
@@ -544,14 +556,24 @@ class MutationSpectrum:  # is this needed for Pedel?
         self._calculate_advanced()
         # mutation frequency
 
+    @staticmethod
+    def _sanify_input(item):
+        item = item.upper().replace("U", "T")
+        if item.find("<") == 1:
+            (tobase, frombase) = item.split("<")
+            item = frombase + ">" + tobase
+        return item
+
     def __getitem__(self, item):
-        return self.table[item]
+        item = MutationSpectrum._sanify_input(item)
+        return self._data[item]
 
     def __setitem__(self, item, value):
-        self.table[item] = value
+        item = MutationSpectrum._sanify_input(item)
+        self._data[item] = value
 
     def __str__(self):
-        return str(self.table)
+        return str(self._data)
 
     @classmethod
     def from_values(cls,
@@ -601,6 +623,17 @@ class MutationSpectrum:  # is this needed for Pedel?
             warnings.warn("Sequence not given, default (equal base frequency) used")
 
     def _calculate_se_table(self):
+        """
+        Calculates the average and se. Fills the `_data` attribute (a dictionary) with the basic spectrum as NumSEM instances.
+        Despite `_data` not being a MutationTable, its members can be accessed by indexing of the instance with the "N>N" or "N<N" notation.
+
+        >>> spectro = MutationSpectrum([mutant1, mutant2])
+        >>> print(spectro["A>T"])
+        0.4375±0.21875
+
+        The derived fields (_e.g._ "W>N") are calculated in _calculate_advanced.
+        :return:
+        """
         comp = {"A": "T", "T": "A", "G": "C", "C": "G"}
         self.avg_table = MutationTable(
             {b1 + ">" + b2: (self.table[b1 + ">" + b2] + self.table[comp[b1] + ">" + comp[b2]]) / 2 for (b1, b2) in
@@ -610,9 +643,32 @@ class MutationSpectrum:  # is this needed for Pedel?
             [(self.avg_table[x] - self.table[x]) ** 2 for x in [b1 + ">" + b2, comp[b1] + ">" + comp[b2]]]) / 2 for
                                         (b1, b2) in MutationTable.ibase()})
         self.se_table = MutationTable({d: math.sqrt(self.var_table[d] / 2) for d in self.var_table})  # n, not n-1?
+        a = self.avg_table.to_dict()
+        s = self.se_table.to_dict()
+        self._data = {k: NumSEM(a[k], s[k]) for k in a}
 
     def _calculate_advanced(self):  # UNFINISHED
-        pass
+        """
+        Calculates the derived fields:
+        * W>S
+        * W>W
+        * W>N
+        * S>S
+        * S>W
+        * S>N
+        * W>S/S>W
+        :return:
+        """
+        # ['TsOverTv', 'W2SOverS2W', 'W2N', 'S2N', 'W2S', 'S2W', 'ΣTs', 'Ts1', 'Ts2', 'ΣTv', 'TvW', 'TvN1', 'TvS','TvN2']
+
+        self["W>S"] = self["A>G"] + self["T>G"] + self["A>C"] + self["T>C"]
+        self["W>W"] = self["A>T"] + self["T>A"]
+        self["S>W"] = self["G>A"] + self["G>T"] + self["C>A"] + self["C>T"]
+        self["S>S"] = self["G>C"] + self["C>G"]
+        self["W>N"] = self["W>S"] + self["S>S"]
+        self["S>N"] = self["S>W"] + self["W>W"]
+        self["W>S/S>W"] = self["W>S"]/self["S>W"]
+
 
     @classmethod
     def from_mutation_list(cls, mutations, seq=None):  # class method
@@ -642,6 +698,11 @@ class NumSEM:
         self._df = int(df)
 
     def __str__(self):
+        """
+        The lowest digit to show is the first digit of the error. So math.floor(math.log10(se))
+        :return:
+        """
+        sig = math.floor(math.log10(self._se))
         return str(self._num) + "±" + str(self._sem)
 
     def __add__(self, other):
@@ -786,13 +847,13 @@ def test():
     # print(mincodondist("ATG", "I"))  #ATH is correct answer
     # print(generateCodonCodex())  # ACG is correct answer
     # print("Test complete")
-    spectro = MutationSpectrum([MutationDNASeq(seq).mutate(m), MutationDNASeq(seq).mutate("3G>T")])
-    print(spectro.table)
-    print(spectro.avg_table)
-    print(spectro.se_table)
-    #print(NumSEM(1, 1, 2) / NumSEM(1, 1, 2))
+    #spectro = MutationSpectrum([MutationDNASeq(seq).mutate(m), MutationDNASeq(seq).mutate("3G>T")])
+    print(spectro.__dict__)
+    # print(NumSEM(1, 1, 2) / NumSEM(1, 1, 2))
 
 
 if __name__ == "__main__":
     test()
     # TODO mutational load
+    # TODO transversion
+    # TODO ± sig
