@@ -3,6 +3,8 @@
 # Written for python 3
 
 import itertools as it
+import numpy as np
+import scipy.optimize as optimization
 import math
 import re
 import warnings
@@ -512,8 +514,16 @@ class MutationLoad:
                 self.seq = variant.wt
             elif variant.wt:
                 assert self.seq == variant.wt, " Mutants appear to not be variants of the same wt sequence"
-        self.add_mutations(self.mutations)
+        tally = np.array(self.mutation_tally) #make np earlier still?
+        self.mutation_frequency = np.bincount(tally) #overkill?
+        parameters, cov_matrix = optimization.curve_fit(self.poisson, tally.mean(), self.mutation_frequency)
+        #TODO finish another time
 
+    def pcr_distribution(self):
+        pass
+
+    def poisson(k, lamb):
+        return (lamb**k/factorial(k)) * np.exp(-lamb)
 
 
 class MutationSpectrum:  # is this needed for Pedel?
