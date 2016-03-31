@@ -4,7 +4,7 @@
 
 import itertools as it
 import numpy as np
-import scipy.optimize as optimization
+import scipy as sp
 import math
 import re
 import warnings
@@ -516,14 +516,14 @@ class MutationLoad:
                 assert self.seq == variant.wt, " Mutants appear to not be variants of the same wt sequence"
         tally = np.array(self.mutation_tally) #make np earlier still?
         self.mutation_frequency = np.bincount(tally) #overkill?
-        parameters, cov_matrix = optimization.curve_fit(self.poisson, tally.mean(), self.mutation_frequency)
+        parameters, cov_matrix = sp.optimize.curve_fit(self.poisson, tally.mean(), self.mutation_frequency)
         #TODO finish another time
 
     def pcr_distribution(self):
         pass
 
     def poisson(k, lamb):
-        return (lamb**k/factorial(k)) * np.exp(-lamb)
+        return (lamb**k/sp.misc.factorial(k)) * np.exp(-lamb)
 
 
 class MutationSpectrum:  # is this needed for Pedel?
@@ -858,7 +858,7 @@ def test():
     # print(generateCodonCodex())  # ACG is correct answer
     # print("Test complete")
     #spectro = MutationSpectrum([MutationDNASeq(seq).mutate(m), MutationDNASeq(seq).mutate("3G>T")])
-    print(spectro.__dict__)
+    #print(spectro.__dict__)
     # print(NumSEM(1, 1, 2) / NumSEM(1, 1, 2))
 
 
