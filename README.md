@@ -1,25 +1,27 @@
-# mutagenesis
-Revamp of the Pedel server. Work in progress.
+# Mutants!
+Biopython is lacking when it comes to mutagenesis. Hopefully this module will help!
 
-## Mutants!
-Biopython is terrible when it comes to mutagenesis. Hopefully this module will help!
+> This is pre-release. You can use some features of it, but some might not work or might change in future.
 
-Firstly, it has the class `MutationDNASeq`. This behaves like a normal Seq object except that it has a method called mutate and the attribute mutations.
-The instantiation argument is a string like for a seq object or a seq object itself.
-The method `mutate()` mutates the sequence based on the  mutations, expressed as a string with spaces or list of strings.
-Different customs for nucleotide and protein are used to tell them apart:
-* 234A>T for DNA
-* A12F for protein, unless forceDNA is true. This is not yet implemented and will require special coding.
+# Usage
+This Python module allow an easy way to add mutations (either nucleic acid or protein) to a nucleic acid sequence.
+It also performs several features present in the [mutanalyst site](http://www.mutanalyst.com)
+namely the calculation of the mutational spectrum and mutational load of a set of mutated sequences using mathemagical
+steps (_i.e._ just pretend the maths is magic) to get the most accurate values.
 
-The mutations list contains mutation objects.
+The module uses the "123A>T" style of annotating mutations at the nucleic acid level.
 
-# Help
-For now the help is a dumped pydoc....
+```
+>>> seq =
+>>> MutationDNASeq("ATGTTGGGGAATTTTGGGGAACCC").mutate("3G>T")
+#spectro = MutationSpectrum([MutationDNASeq(seq).mutate("1A>T"), MutationDNASeq(seq).mutate("3G>T"),MutationDNASeq(seq).mutate("4T>A")])
+```
+For now the help is a munged pydoc man file... For a more upto date version download the code andimport
+```
+>>> import mutagenesis
+>>> help(mutagenesis)
 
-# NAME
-mutagenesis
-
-# DESCRIPTION
+# Description
 Classes:
 
 * mutation

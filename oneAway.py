@@ -26,10 +26,6 @@ So get the 3375 codons and make a set of AA made.
 Given a codon's options, filter out the ones that give the inaccessible ones.
 For the remaining find ones where all AA are made.
 In case of a draw, combination of two or more.
-
-
-
-Folder: Wayne Marsden
 '''
 __author__ = "Matteo Ferla. [Github](https://github.com/matteoferla)"
 __email__ = "matteo.ferla@gmail.com"
