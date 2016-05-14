@@ -57,11 +57,40 @@ class foo2():
     def __str__(self):
         return self._data
 
-    def mymethod2(self):
-        self._data+="_method2"
+class bar:
+    def __init__(self):
+        self.a=1
+        self.b=2
+        self.c=3
+        self.d=self.synonym(self.a)
+        self.e=property(self.a, None, None, "I'm the 'x' property.")
 
+    def synonym(self,original):
+        def getx():
+            return getattr(self, original)
+        return property(getx, None, None, "I'm the 'x' property.")
 
+        def mymethod2(self):
+            self._data+="_method2"
+
+class C:
+    def __init__(self):
+        self._x = None
+
+    def getx(self):
+        return self._x
+
+    def setx(self, value):
+        self._x = value
+
+    def delx(self):
+        del self._x
+
+    x = property(getx,setx)
 
 
 if __name__ == "__main__":
-    print(foo2())
+    #print(property(5, None, None, "I'm the 'x' property."))
+    c=C()
+    c.x=5
+    print(c.x)

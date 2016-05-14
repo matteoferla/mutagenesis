@@ -4,7 +4,8 @@
 
 import itertools as it
 import numpy as np
-import scipy as sp
+#import scipy as sp
+from scipy import misc, optimize, special
 import math
 import re
 import warnings
@@ -505,25 +506,46 @@ class MutationLoad:
                     freqVar=0,
                     freqList=0,
     """
-    def __init__(self,mutants):
+
+    def __init__(self, mutants, pcr_efficiency=None, pcr_cycles=32):
         self.mutation_tally = []
+        self.seq=None
         for variant in mutants:
             assert type(variant) is MutationDNASeq, str(variant) + " is not a instance of MutationDNASeq as expected."
-            self.mutation_tally.append(len(self.mutations))
+            self.mutation_tally.append(len(variant.mutations))
             if not self.seq and variant.wt:
                 self.seq = variant.wt
             elif variant.wt:
                 assert self.seq == variant.wt, " Mutants appear to not be variants of the same wt sequence"
-        tally = np.array(self.mutation_tally) #make np earlier still?
-        self.mutation_frequency = np.bincount(tally) #overkill?
-        parameters, cov_matrix = sp.optimize.curve_fit(self.poisson, tally.mean(), self.mutation_frequency)
-        #TODO finish another time
+        tally = np.array(self.mutation_tally)  # make np earlier still?
+        self.mutation_frequency = np.bincount(tally)  # overkill?
+        self.mean=NumSEM(tally.mean(),tally.std()/np.sqrt(len(tally)))
+        self.arange=np.arange(0,tally.max()+1)
+        parameters, cov_matrix = optimize.curve_fit(self.poisson, self.arange, self.mutation_frequency)
+        self.lamb=NumSEM(parameters[0],np.sqrt(np.diag(cov_matrix)))
+        if pcr_efficiency:
+            self.pcr_efficiency =pcr_efficiency
+            self.pcr_cycles =pcr_cycles
+            pcr = MutationLoad.pcr_distribution_factory(self.pcr_efficiency, self.pcr_cycles)
+            parameters, cov_matrix = optimize.curve_fit(pcr, self.arange, self.mutation_frequency)
+            self.pcr=NumSEM(parameters[0],np.sqrt(np.diag(cov_matrix)))
+        print(self.mean,self.lamb, self.pcr)
 
-    def pcr_distribution(self):
-        pass
-
+    @staticmethod
+    def pcr_distribution_factory(efficiency, cycles):
+        def pcr_distribution(k, mu):
+            # fnx copied from Drummond 2005
+            # except that the author is a casinista when it comes to naming variables.
+            # there <m_{nt}> means both Poisson-lambda (here mu) and m = Poisson-k (here k)
+            # k is used as the summation index, here i.
+            # p = (1 + h)^{-n}\sum_{i=0}^{n}\binom{n}{i}h^k\frac{(ix)^m e^{-ik}}{k!}
+            # x = (mu (1 + h))/(n h)
+            x=mu * (1 + efficiency)/(cycles*efficiency)
+            return (1+ efficiency)**(-cycles) * np.sum([special.binom(cycles,i) * efficiency**i * ((i*x)**k) * np.exp(-i*x)/misc.factorial(k) for i in np.arange(0,cycles+1)])
+        return pcr_distribution
+    @staticmethod
     def poisson(k, lamb):
-        return (lamb**k/sp.misc.factorial(k)) * np.exp(-lamb)
+        return (lamb ** k / misc.factorial(k)) * np.exp(-lamb)
 
 
 class MutationSpectrum:  # is this needed for Pedel?
@@ -569,9 +591,22 @@ class MutationSpectrum:  # is this needed for Pedel?
     @staticmethod
     def _sanify_input(item):
         item = item.upper().replace("U", "T")
+        subdex = {"TvW": "W>W", "Ts1": "W>S:Ts", "Ts2": "S>W:Ts", "W>S:Tv": "TvN1", "TvS": "S>S",
+                  "S>W:Tv": "TvN2"}  # substitution dictionary
+        if item in subdex:
+            item = subdex[item]
+        item.replace("sum", "Σ")
+        item.replace("∑", "Σ")  # greek vs. maths. Unicode is hard to embrace, ae?
+        item.replace("Transversions", "Tv")
+        item.replace("Transions", "Ts")
         if item.find("<") == 1:
-            (tobase, frombase) = item.split("<")
-            item = frombase + ">" + tobase
+            if item.find(":") == -1:
+                (tobase, frombase) = item.split("<")
+                item = frombase + ">" + tobase
+            else:
+                (direction, qual) = item.split(":")
+                (tobase, frombase) = direction.split("<")
+                item = frombase + ">" + tobase + ":" + qual
         return item
 
     def __getitem__(self, item):
@@ -583,7 +618,7 @@ class MutationSpectrum:  # is this needed for Pedel?
         self._data[item] = value
 
     def __str__(self):
-        return str(self._data)
+        return str("\n".join([str(x) + ":\t" + str(y) for x, y in self._data.items()]))
 
     @classmethod
     def from_values(cls,
@@ -667,18 +702,29 @@ class MutationSpectrum:  # is this needed for Pedel?
         * S>W
         * S>N
         * W>S/S>W
+        * W>S:Ts
+        * S>W:Ts
+        * W>S:Tv
+        * S>W:Tv
+        * ΣTs
+        * ΣTv
+        * ΣTs/ΣTv
         :return:
         """
-        # ['TsOverTv', 'W2SOverS2W', 'W2N', 'S2N', 'W2S', 'S2W', 'ΣTs', 'Ts1', 'Ts2', 'ΣTv', 'TvW', 'TvN1', 'TvS','TvN2']
-
         self["W>S"] = self["A>G"] + self["T>G"] + self["A>C"] + self["T>C"]
-        self["W>W"] = self["A>T"] + self["T>A"]
+        self["W>W"] = self["A>T"] + self["T>A"]  # TvW in JS
         self["S>W"] = self["G>A"] + self["G>T"] + self["C>A"] + self["C>T"]
         self["S>S"] = self["G>C"] + self["C>G"]
         self["W>N"] = self["W>S"] + self["S>S"]
         self["S>N"] = self["S>W"] + self["W>W"]
-        self["W>S/S>W"] = self["W>S"]/self["S>W"]
-
+        self["W>S/S>W"] = self["W>S"] / self["S>W"]
+        self["W>S:Ts"] = self["A>G"] + self["T>C"]  # Ts1 in JS
+        self["S>W:Ts"] = self["G>A"] + self["C>T"]  # Ts2 in JS
+        self["ΣTs"] = self["W>S:Ts"] + self["S>W:Ts"]
+        self["W>S:Tv"] = self["A>C"] + self["T>G"]
+        self["S>W:Tv"] = self["G>T"] + self["C>A"]
+        self["ΣTv"] = self["W>S:Tv"] + self["S>W:Tv"] + self["S>S"] + self["W>W"]
+        self["ΣTs/ΣTv"] = self["ΣTs"] / self["ΣTv"]
 
     @classmethod
     def from_mutation_list(cls, mutations, seq=None):  # class method
@@ -695,6 +741,7 @@ class NumSEM:
     I am not sure why there is nothing that does this and whether this is the best way of doing.
     For now errors are propagated parametrically based on the maths I discuss in [mutanalyst](http://www.mutanalyst.com/)
     """
+    option_space_between_numbers = True
 
     def __init__(self, num, sem, df=2):
         """
@@ -712,8 +759,19 @@ class NumSEM:
         The lowest digit to show is the first digit of the error. So math.floor(math.log10(se))
         :return:
         """
-        sig = math.floor(math.log10(self._se))
-        return str(self._num) + "±" + str(self._sem)
+        if self.option_space_between_numbers:
+            s = " "
+        else:
+            s = ""
+        if self._sem == 0:
+
+            return str(self._num) + s + "±" + s + "Ind."
+        else:
+            sig = -math.floor(math.log10(self._sem))
+            if sig<0:
+                sig=0
+            txt = "{:."+str(sig)+"f}" + s + "±" + s + "{:."+str(sig)+"f}"
+            return txt.format(self._num, self._sem)
 
     def __add__(self, other):
         """
@@ -852,18 +910,15 @@ def generateCodonCodex():
 def test():
     seq = "ATG TTG GGG AAT TTT GGG GAA CCC".replace(" ", "")
     m = "2T>G"
-    # print("Mutating " +seq +" " + m + " ", MutationDNASeq(seq).mutate(m))
-    # mutationSpectrum()
-    # print(mincodondist("ATG", "I"))  #ATH is correct answer
-    # print(generateCodonCodex())  # ACG is correct answer
-    # print("Test complete")
-    #spectro = MutationSpectrum([MutationDNASeq(seq).mutate(m), MutationDNASeq(seq).mutate("3G>T")])
-    #print(spectro.__dict__)
-    # print(NumSEM(1, 1, 2) / NumSEM(1, 1, 2))
+    mutball=[MutationDNASeq(seq).mutate(m),
+                                MutationDNASeq(seq).mutate("3G>T"),
+                                MutationDNASeq(seq).mutate(["1A>G","2T>C"])];
+    #spectro = MutationSpectrum(mutball)
+    load = MutationLoad(mutball,0.6,32)
+    print("Test complete")
 
 
 if __name__ == "__main__":
     test()
-    # TODO mutational load
-    # TODO transversion
-    # TODO ± sig
+    # TODO fix PCR distribution
+    # TODO pretty print MutationalSpectum
