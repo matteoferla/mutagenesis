@@ -4,7 +4,7 @@
 
 import itertools as it
 import numpy as np
-#import scipy as sp
+# import scipy as sp
 from scipy import misc, optimize, special
 import math
 import re
@@ -509,7 +509,7 @@ class MutationLoad:
 
     def __init__(self, mutants, pcr_efficiency=None, pcr_cycles=32):
         self.mutation_tally = []
-        self.seq=None
+        self.seq = None
         for variant in mutants:
             assert type(variant) is MutationDNASeq, str(variant) + " is not a instance of MutationDNASeq as expected."
             self.mutation_tally.append(len(variant.mutations))
@@ -519,33 +519,37 @@ class MutationLoad:
                 assert self.seq == variant.wt, " Mutants appear to not be variants of the same wt sequence"
         tally = np.array(self.mutation_tally)  # make np earlier still?
         self.mutation_frequency = np.bincount(tally)  # overkill?
-        self.mean=NumSEM(tally.mean(),tally.std()/np.sqrt(len(tally)))
-        self.arange=np.arange(0,tally.max()+1)
-        parameters, cov_matrix = optimize.curve_fit(self.poisson, self.arange, self.mutation_frequency)
-        self.lamb=NumSEM(parameters[0],np.sqrt(np.diag(cov_matrix)))
+        self.mean = NumSEM(tally.mean(), tally.std() / np.sqrt(len(tally)))
+        self.arange = np.arange(0, tally.max() + 1)
+        parameters, cov_matrix = optimize.curve_fit(poisson, self.arange, self.mutation_frequency)
+        self.lamb = NumSEM(parameters[0], np.sqrt(np.diag(cov_matrix)))
         if pcr_efficiency:
-            self.pcr_efficiency =pcr_efficiency
-            self.pcr_cycles =pcr_cycles
-            pcr = MutationLoad.pcr_distribution_factory(self.pcr_efficiency, self.pcr_cycles)
+            self.pcr_efficiency = pcr_efficiency
+            self.pcr_cycles = pcr_cycles
+            pcr = pcr_distribution_factory(self.pcr_efficiency, self.pcr_cycles)
             parameters, cov_matrix = optimize.curve_fit(pcr, self.arange, self.mutation_frequency)
-            self.pcr=NumSEM(parameters[0],np.sqrt(np.diag(cov_matrix)))
-        print(self.mean,self.lamb, self.pcr)
+            self.pcr = NumSEM(parameters[0], np.sqrt(np.diag(cov_matrix)))
+        print(self.mean, self.lamb, self.pcr)
 
-    @staticmethod
-    def pcr_distribution_factory(efficiency, cycles):
-        def pcr_distribution(k, mu):
-            # fnx copied from Drummond 2005
-            # except that the author is a casinista when it comes to naming variables.
-            # there <m_{nt}> means both Poisson-lambda (here mu) and m = Poisson-k (here k)
-            # k is used as the summation index, here i.
-            # p = (1 + h)^{-n}\sum_{i=0}^{n}\binom{n}{i}h^k\frac{(ix)^m e^{-ik}}{k!}
-            # x = (mu (1 + h))/(n h)
-            x=mu * (1 + efficiency)/(cycles*efficiency)
-            return (1+ efficiency)**(-cycles) * np.sum([special.binom(cycles,i) * efficiency**i * ((i*x)**k) * np.exp(-i*x)/misc.factorial(k) for i in np.arange(0,cycles+1)])
-        return pcr_distribution
-    @staticmethod
-    def poisson(k, lamb):
-        return (lamb ** k / misc.factorial(k)) * np.exp(-lamb)
+
+def pcr_distribution_factory(efficiency, cycles):
+    def pcr_distribution(k, mu):
+        # fnx copied from Drummond 2005
+        # except that the author is a casinista when it comes to naming variables.
+        # there <m_{nt}> means both Poisson-lambda (here mu) and m = Poisson-k (here k)
+        # k is used as the summation index, here i.
+        # p = (1 + h)^{-n}\sum_{i=0}^{n}\binom{n}{i}h^k\frac{(ix)^m e^{-ik}}{k!}
+        # x = (mu (1 + h))/(n h)
+        x = mu * (1 + efficiency) / (cycles * efficiency)
+        return (1 + efficiency) ** (-cycles) * np.sum(
+            [special.binom(cycles, i) * efficiency ** i * ((i * x) ** k) * np.exp(-i * x) / misc.factorial(k) for i in
+             np.arange(0, cycles + 1)])
+
+    return pcr_distribution
+
+
+def poisson(k, lamb):
+    return (lamb ** k / misc.factorial(k)) * np.exp(-lamb)
 
 
 class MutationSpectrum:  # is this needed for Pedel?
@@ -768,9 +772,9 @@ class NumSEM:
             return str(self._num) + s + "±" + s + "Ind."
         else:
             sig = -math.floor(math.log10(self._sem))
-            if sig<0:
-                sig=0
-            txt = "{:."+str(sig)+"f}" + s + "±" + s + "{:."+str(sig)+"f}"
+            if sig < 0:
+                sig = 0
+            txt = "{:." + str(sig) + "f}" + s + "±" + s + "{:." + str(sig) + "f}"
             return txt.format(self._num, self._sem)
 
     def __add__(self, other):
@@ -835,8 +839,8 @@ class NumSEM:
         # Also it is not degrees of freedom but sample size...
 
 
-def mincodondist(codon,
-                 aa):  # there must be a more elegant way, but this will do. Serine and stop are the problematic ones.
+def mincodondist(codon, aa):
+    # there must be a more elegant way, but this will do. Serine and stop are the problematic ones.
     """
     This method is called solely by generateCodonCodex, which is here just to show how the codoncodex dictionary was made.
     :param codon: a string of three characters corresponding to the starting codon
@@ -907,18 +911,135 @@ def generateCodonCodex():
             it.product("ATGC", repeat=3)}
 
 
+##### Wayne's stuff
+
+def glue_completeness(vsize, lsize):
+    """
+    Find the library completeness given:
+    :param vsize: Number of possible variants
+    :param lsize: Size of library
+    :return: completeness as [0,1] number
+    """
+    return 1 - math.exp(-lsize / vsize)
+
+
+def glue_library(vsize, completeness):
+    """
+    Find the required library size given:
+    :param vsize: Number of possible variants
+    :param completeness: completeness as [0,1] number
+    :return: library size required
+    """
+    if completeness > 1:  # percentage...
+        completeness /= 100
+    return -vsize * math.log(1 - completeness)
+
+
+def glue_probability(vsize, probability):
+    """
+    Find the req library size given:
+    :param vsize: Number of possible variants
+    :param probability: probability the library is 100% complete
+    :return: library size required
+    """
+    return -vsize * math.log(1 - math.exp(math.log(probability) / vsize))
+
+
+def glue(vsize, lsize=None, completeness=None, probability=None):  # TODO UNFINISHED
+    """
+    Wrapper for the glue functions. Depending on what is given it will figure it out.
+    :param vsize: Number of possible variants
+    :param lsize: library size required
+    :param completeness: completeness as [0,1] number
+    :param probability: probability the library is 100% complete
+    :return: dictionary
+    """
+    if not vsize:
+        raise Exception("Why would you not know that?")
+    if not lsize:
+        if not completeness and not probability:
+            pass
+    raise Exception('NOT FINISHED. I need to think when certain features would be useful')
+
+
+def pedel(lsize, seq_len, mps, dist_fx=poisson):
+    """
+    For poisson distribution use poisson (default).
+    For pcr distribution, use first pcr_distribution_factory(efficiency, cycles) to obtain a function specific to those parameters.
+    >>> pedel(1e6,len(wt),4,pcr_distribution_factory(0.4, 32))
+    :param lsize: library size
+    :param seq_len: sequence length (bases)
+    :param mps: mutation per seq.
+    :param dist_fx: function of the distribution
+    :return: number of distinct sequences in library
+    """
+    def Lx(x):
+        return poisson(x,mps)*lsize
+
+    def Cx(x):
+        """
+        Number of unique variants in libray with x mutations
+        :param x: n muts
+        :return: C_x
+        """
+        if x == 0:
+            return 1  # wt
+        # eq 6.
+        return Vx(x)*(1-math.exp(-Lx(x)/Vx(x)))
+
+    def Vx(x):
+        """
+        Number of possible variants with x muts
+        :param x: number of mutations
+        :return: V_x
+        """
+        if x == 0:
+            return 1  # wt
+        # eq. 5
+        return special.binom(seq_len,x) * 3 ** x
+
+    xu = (mps + math.log(0.1 / lsize)) / math.log(mps / (2 * seq_len))
+    xl = (mps + math.log(3 / lsize)) / math.log(mps / (3 * seq_len))
+    s1 = math.floor(xl)
+    s2 = math.ceil(xu)
+    # note that range(min,max) does not include max.
+    C = 1 + \
+        sum([Vx(x) for x in range(1, s1 + 1)]) + \
+        sum([Cx(x) for x in range(s1, s2)]) + \
+        lsize * (1 - sum([dist_fx(x, mps) for x in range(0, s2)]))
+    return C
+
+
 def test():
     seq = "ATG TTG GGG AAT TTT GGG GAA CCC".replace(" ", "")
     m = "2T>G"
-    mutball=[MutationDNASeq(seq).mutate(m),
-                                MutationDNASeq(seq).mutate("3G>T"),
-                                MutationDNASeq(seq).mutate(["1A>G","2T>C"])];
-    #spectro = MutationSpectrum(mutball)
-    load = MutationLoad(mutball,0.6,32)
+    mutball = [MutationDNASeq(seq).mutate(m),
+               MutationDNASeq(seq).mutate("3G>T"),
+               MutationDNASeq(seq).mutate(["1A>G", "2T>C"])]
+    # spectro = MutationSpectrum(mutball)
+    load = MutationLoad(mutball, 0.6, 32)
     print("Test complete")
+
+def test_wayne():
+    def comp(n,a,b):
+        print("{0}= found:{1} exp:{2}".format(n,a,b))
+    comp("Glue completeness",glue_completeness(1e6,3e6),0.9502)
+    comp("Glue library",glue_library(1e6,0.95),2.996e6)
+    comp("Glue prob",glue_probability(1e6,0.95),1.679e7)
+    comp("Pedel",pedel(1e7,1000,4,poisson),8.872e6)
+
+
+
 
 
 if __name__ == "__main__":
-    test()
+    test_wayne()
     # TODO fix PCR distribution
     # TODO pretty print MutationalSpectum
+    # TODO add the following:
+    # glue-it
+    # codoncalculator
+    # aa-calculator
+    # Pedel
+    # pedel-AA
+    # driver
