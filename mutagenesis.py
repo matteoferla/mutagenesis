@@ -274,7 +274,7 @@ class Mutation:
                 mutation = str(rexprotsub.group(2)) + "\u0394" + str(rexprotsub.group(1))
                 rexnucldel = re.match("(\d+)\u0394(\w?)", mutation)  # 234delA
             elif mutation.find(">") != -1:  # 234A>T
-                print('forceDNA flag called even if DNA mutation given')  # TODO warning
+                warnings.warn('forceDNA flag called even if DNA mutation given')
             else:
                 MutationFormatError()
         # NUCLEOTIDE
@@ -410,6 +410,12 @@ class MutationDNASeq(Seq):
         self.mutations = []
 
     def mutate(self, mutations, forceDNA=False):
+        """
+        Adds mutations to a seq. See Mutation class for format of mutation.
+        :param mutations: comma or space separated string, list of Mutation instances or single Mutation istance.
+        :param forceDNA: boolean seen with Mutation class.
+        :return: Self
+        """
         # reorganise and check mutations into a list of string
         if isinstance(mutations, str):
             mutations = mutations.replace(",", " ").split()
@@ -431,6 +437,29 @@ class MutationDNASeq(Seq):
             self.mutations.append(mut)
             self._data = mut.apply(self)
         return self
+
+    def variant(self, mutations, forceDNA=False):
+        """
+        Returns a copy of the sequence (wt only, no preëxisting mutations) mutated with the given mutations.
+        :param mutations: same as mutate method.
+        :param forceDNA:
+        :return: new instance
+        """
+        return MutationDNASeq(self.wt).mutate(mutations, forceDNA)
+
+    def variants(self, mutations, forceDNA=False):
+        if isinstance(mutations,str):
+            mutations=list(filter(len,mutations.replace(";","\n").replace("\r","\n").split("\n")))
+        pass
+    #HERE
+
+
+    def to_regular_seq(self):
+        """
+        Returns a Seq() object, where the sequence is that with the mutation added (`_data`), not the wild type (`wt`).
+        :return: Seq instance.
+        """
+        return Seq(self._data, alphabet=NucleotideAlphabet())
 
 
 class MutationTable:
@@ -529,7 +558,6 @@ class MutationLoad:
             pcr = pcr_distribution_factory(self.pcr_efficiency, self.pcr_cycles)
             parameters, cov_matrix = optimize.curve_fit(pcr, self.arange, self.mutation_frequency)
             self.pcr = NumSEM(parameters[0], np.sqrt(np.diag(cov_matrix)))
-        print(self.mean, self.lamb, self.pcr)
 
 
 def pcr_distribution_factory(efficiency, cycles):
@@ -587,10 +615,12 @@ class MutationSpectrum:  # is this needed for Pedel?
         self.base_frequency = {"A": 0.25, "T": 0.25, "G": 0.25, "C": 0.25}
         self._process_mutations_from_mutants(mutants)
         self._calculate_base_frequency()
+        self.refresh()
+
+    def refresh(self):
         self.table = self.raw_table.normalize(**self.base_frequency)
         self._calculate_se_table()
         self._calculate_advanced()
-        # mutation frequency
 
     @staticmethod
     def _sanify_input(item):
@@ -641,6 +671,7 @@ class MutationSpectrum:  # is this needed for Pedel?
             mut.mutations = mutations
         else:
             mut.mutations = []
+        raise Exception('Incomplete')
         return mut
 
     def add_mutations(self, mutations):
@@ -973,8 +1004,9 @@ def pedel(lsize, seq_len, mps, dist_fx=poisson):
     :param dist_fx: function of the distribution
     :return: number of distinct sequences in library
     """
+
     def Lx(x):
-        return poisson(x,mps)*lsize
+        return poisson(x, mps) * lsize
 
     def Cx(x):
         """
@@ -985,7 +1017,7 @@ def pedel(lsize, seq_len, mps, dist_fx=poisson):
         if x == 0:
             return 1  # wt
         # eq 6.
-        return Vx(x)*(1-math.exp(-Lx(x)/Vx(x)))
+        return Vx(x) * (1 - math.exp(-Lx(x) / Vx(x)))
 
     def Vx(x):
         """
@@ -996,7 +1028,7 @@ def pedel(lsize, seq_len, mps, dist_fx=poisson):
         if x == 0:
             return 1  # wt
         # eq. 5
-        return special.binom(seq_len,x) * 3 ** x
+        return special.binom(seq_len, x) * 3 ** x
 
     xu = (mps + math.log(0.1 / lsize)) / math.log(mps / (2 * seq_len))
     xl = (mps + math.log(3 / lsize)) / math.log(mps / (3 * seq_len))
@@ -1010,30 +1042,74 @@ def pedel(lsize, seq_len, mps, dist_fx=poisson):
     return C
 
 
+def driver(lsize, seq_len, cross, positions, observable=True):
+    """
+    DRIVeR.
+    :param lsize: library size
+    :param seq_len: seq length
+    :param cross: mean number of crossovers
+    :param positions: positions of variable bases
+    :param observable: boolean for observable (True) or all (False) crossovers
+    :return: number of possible seqs, expected number of distinct seqs, mean num of actual cross, mean num of obs cross.
+    """
+    pass
+
+
+class LibraryStatistics():
+    def __init__(self, lsize, mload, mspectrum):
+        pass
+
+    '''
+
+    '''
+
+
 def test():
-    seq = "ATG TTG GGG AAT TTT GGG GAA CCC".replace(" ", "")
-    m = "2T>G"
+    wt = MutationDNASeq(
+        "ATGAACACAGACGACATTCTGTTTTCTTACGGAGAAGAAGACATTCCTTTGAAGGCGCTGTCGTTTCCCATCTTCGAAACGACGAATTTCTACTTCGACAGTTTCGACGAGATGTCGAAAGCCCTCAGAAACGGAGACTACGAATTCGTTTACAAAAGAGGAAGTAATCCCACAACGAGACTGGTGGAGAAGAAACTCGCAGCGCTTGAAGAGTGTGAAGATGCCCGCCTCGTTGCCTCTGGAATGAGCGCCATTTCGCTTTCCATCCTTCATTTCCTCAGCTCGGGAGACCACGTCGTGTGTGTGGACGAGGCTTACTCCTGGGCGAAAAAGTTCTTCAACTACCTTTCAAAGAAGTTCGATATAGAAGTCAGCTACGTTCCTCCCGACGCGGAAAGAATAGTCGAAGCCATCACGAAGAAGACGAAGCTCATCTACCTCGAAAGTCCCACGAGTATGAGAATGAAAGTGATCGATATAAGAAAGGTCACAGAAGCGGCAGGAGAACTCAAGATAAAAACCGTCATAGACAACACCTGGGCGTCGCCGATCTTTCAAAAACCAAAGCTTCTGGGAGTGGATGTGGTGGTCCACTCTGCGACGAAGTACATCTCAGGACACGGAGACGTGATGGCAGGAGTGATCGCAGGAGACGTCGAAGATATGAAGAACATCTTCGTGGATGAATACAAAAACATCGGACCGGTTCTCTCGCCCATAGAAGCCTGGCTCATCTTGAGAGGTCTTAGAACGCTGGAACTCCGTATGAAAAAGCACTACGAAAACGCTCTTGTGGTGTCTGACTTCCTCATGGATCACCCGAAGGTCCTCGAGGTGAACTACCCGATGAATCCAAGATCACCGCAGTACGAACTCGCTTCCTCTCAGATGAGCGGTGGCTCAGGACTGATGAGCTTCAGGCTGAAAACGGACAGCGCAGAGAAAGTCAAAGAGTTCGTCGAAAGTCTGAGGGTTTTCAGGATGGCTGTGAGCTGGGGAAGTCACGAGAACCTTGTTGTTCCAAGGGTGGCTTATGGAGACTGCCCGAAAAAAGACGTGAACCTGATAAGAATCCATGTGGGTCTCGGAGATCCAGAAAAGCTCGTGGAAGATCTGGATCAGGCACTCAAAAAGATTTAA")
+    mutations='''G286A T306C A687T T880C
+WT
+WT
+C372T A923G
+G832A
+A650C
+A720C
+C449A A556G A814G A853G C826T C1059T
+G793A
+A1048G
+G726T
+G982C
+C53T G678T T798A
+A224T A447G A586T C964T
+A185T
+T860A
+A979T A1005T
+C453T
+WT
+'''
+    wt.variants(mutations,forceDNA=True)
+    return None
     mutball = [MutationDNASeq(seq).mutate(m),
                MutationDNASeq(seq).mutate("3G>T"),
                MutationDNASeq(seq).mutate(["1A>G", "2T>C"])]
-    # spectro = MutationSpectrum(mutball)
-    load = MutationLoad(mutball, 0.6, 32)
+    spectro = MutationSpectrum(mutball)
+    print(spectro)
+    # load = MutationLoad(mutball, 0.6, 32)
     print("Test complete")
 
+
 def test_wayne():
-    def comp(n,a,b):
-        print("{0}= found:{1} exp:{2}".format(n,a,b))
-    comp("Glue completeness",glue_completeness(1e6,3e6),0.9502)
-    comp("Glue library",glue_library(1e6,0.95),2.996e6)
-    comp("Glue prob",glue_probability(1e6,0.95),1.679e7)
-    comp("Pedel",pedel(1e7,1000,4,poisson),8.872e6)
+    def comp(n, a, b):
+        print("{0}= found:{1} exp:{2}".format(n, a, b))
 
-
-
+    comp("Glue completeness", glue_completeness(1e6, 3e6), 0.9502)
+    comp("Glue library", glue_library(1e6, 0.95), 2.996e6)
+    comp("Glue prob", glue_probability(1e6, 0.95), 1.679e7)
+    comp("Pedel", pedel(1e7, 1000, 4, poisson), 8.872e6)
 
 
 if __name__ == "__main__":
-    test_wayne()
+    test()
     # TODO fix PCR distribution
     # TODO pretty print MutationalSpectum
     # TODO add the following:
