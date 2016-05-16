@@ -1079,26 +1079,22 @@ WT
 WT
 C372T A932G
 G832A
-A650C
+A651C
 A720C
-C449A A556G A814G A853G C826T C1059T
+C449A A557G A815G A847G C821T C1056T
 G793A
 A1048G
-G726T
-G982C
-C53T G678T T798A
-A224T A447G A586T C964T
-A185T
-T860A
-A979T A1005T
-C453T
+G724T
+G981C
+C56T G669T T797A
+A243T A476G A593T C960T
+A180T
+T859A
+A979T A1004T
+C452T
 WT
 '''
-    wt.variants(mutations,forceDNA=True)
-    return None
-    mutball = [MutationDNASeq(seq).mutate(m),
-               MutationDNASeq(seq).mutate("3G>T"),
-               MutationDNASeq(seq).mutate(["1A>G", "2T>C"])]
+    mutball=wt.variants(mutations,forceDNA=True)
     spectro = MutationSpectrum(mutball)
     print(spectro)
     # load = MutationLoad(mutball, 0.6, 32)
