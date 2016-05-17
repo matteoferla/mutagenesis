@@ -1113,7 +1113,6 @@ C452T
 WT
 '''
     mutball=wt.variants(mutations,forceDNA=True)
-    #print("Exp",1.3,"Calc",MutationLoad(mutball).lamb._num)
     spectro = MutationSpectrum(mutball)
     print("Raw:")
     print(spectro.raw_table)
@@ -1122,6 +1121,8 @@ WT
     print("Strand normalised")
     print(spectro.avg_table)
     print(spectro)
+    print("Something is wrong in MutationLoad....")
+    print("Exp",1.3,"Calc",MutationLoad(mutball).lamb._num)
     print("Test complete")
 
 
