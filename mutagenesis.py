@@ -10,6 +10,8 @@ import math
 import re
 import warnings
 
+from collections import OrderedDict
+
 from Bio.Alphabet import NucleotideAlphabet
 from Bio.Data import CodonTable
 from Bio.Seq import Seq
@@ -473,7 +475,7 @@ class MutationTable:
     """ATGC^2 table. The values are accessed with a A>C notation.
     Due to the fact that an argument name must be a valid variable name "A>C" cannot be given as MutationTable(A>C=1), but has to be given as MutationTable({A>C: 1})
     To access a frequency, use instance["A>C"] notation"""
-    _bases = {"A": 0, "T": 1, "G": 2, "C": 3}
+    _bases = OrderedDict([("A", 0), ("T", 1), ("G", 2), ("C", 3)])
 
     def __init__(self, frequencies=None):
         # each inner list has all the changes of a single from_base
@@ -519,7 +521,13 @@ class MutationTable:
                 self._bases}
 
     def __str__(self):
-        return str(self.to_dict())  # TODO Fix in future. Ordereddictionary
+        T="\t|"
+        B="-"
+        N="\n"
+        table="F/T"+T+T.join(self._bases.keys())+N
+        table+=B*len(table)+N
+        table+=N.join([fb+T+T.join([str(math.ceil(100*self[fb+">"+tb])/100) for tb in self._bases.keys()]) for fb in self._bases.keys()])
+        return table
 
     def __iter__(self):
         for o in self._bases:
@@ -565,6 +573,16 @@ class MutationLoad:
             pcr = pcr_distribution_factory(self.pcr_efficiency, self.pcr_cycles)
             parameters, cov_matrix = optimize.curve_fit(pcr, self.arange, self.mutation_frequency)
             self.pcr = NumSEM(parameters[0], np.sqrt(np.diag(cov_matrix)))
+        else:
+            self.pcr_efficiency = None
+            self.pcr_cycles = None
+            self.pcr = None
+
+    def __str__(self):
+        if self.pcr:
+            return "PCR distribution: "+str(self.pcr)
+        else:
+            return "Poisson distribution: "+str(self.lamb)
 
 
 def pcr_distribution_factory(efficiency, cycles):
@@ -757,8 +775,8 @@ class MutationSpectrum:  # is this needed for Pedel?
         self["W>W"] = self["A>T"] + self["T>A"]  # TvW in JS
         self["S>W"] = self["G>A"] + self["G>T"] + self["C>A"] + self["C>T"]
         self["S>S"] = self["G>C"] + self["C>G"]
-        self["W>N"] = self["W>S"] + self["S>S"]
-        self["S>N"] = self["S>W"] + self["W>W"]
+        self["W>N"] = self["W>S"] + self["W>W"]
+        self["S>N"] = self["S>W"] + self["S>S"]
         self["W>S/S>W"] = self["W>S"] / self["S>W"]
         self["W>S:Ts"] = self["A>G"] + self["T>C"]  # Ts1 in JS
         self["S>W:Ts"] = self["G>A"] + self["C>T"]  # Ts2 in JS
@@ -1095,9 +1113,15 @@ C452T
 WT
 '''
     mutball=wt.variants(mutations,forceDNA=True)
+    #print("Exp",1.3,"Calc",MutationLoad(mutball).lamb._num)
     spectro = MutationSpectrum(mutball)
+    print("Raw:")
+    print(spectro.raw_table)
+    print("Freq normalised")
+    print(spectro.table)
+    print("Strand normalised")
+    print(spectro.avg_table)
     print(spectro)
-    # load = MutationLoad(mutball, 0.6, 32)
     print("Test complete")
 
 
