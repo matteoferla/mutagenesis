@@ -1004,6 +1004,7 @@ def glue_probability(vsize, probability):
 def glue(vsize, lsize=None, completeness=None, probability=None):  # TODO UNFINISHED
     """
     Wrapper for the glue functions. Depending on what is given it will figure it out.
+    Glue calculates the library coverage/completeness.
     :param vsize: Number of possible variants
     :param lsize: library size required
     :param completeness: completeness as [0,1] number
@@ -1020,6 +1021,7 @@ def glue(vsize, lsize=None, completeness=None, probability=None):  # TODO UNFINI
 
 def pedel(lsize, seq_len, mps, dist_fx=poisson):
     """
+    Pedel calculates library diversity given library size and mutational load.
     For poisson distribution use poisson (default).
     For pcr distribution, use first pcr_distribution_factory(efficiency, cycles) to obtain a function specific to those parameters.
     >>> pedel(1e6,len(wt),4,pcr_distribution_factory(0.4, 32))
@@ -1080,13 +1082,17 @@ def driver(lsize, seq_len, cross, positions, observable=True):
     pass
 
 
-class LibraryStatistics():
+class LibraryStatistics:
     def __init__(self, lsize, mload, mspectrum):
+        """
+
+        :param lsize: library size
+        :param mload: mutation load
+        :param mspectrum: mutatinal spectrum
+        :return:
+        """
         pass
-
-    '''
-
-    '''
+    pass
 
 
 def test():
@@ -1142,21 +1148,24 @@ def test_wayne():
 if __name__ == "__main__":
     #Part 1.
     #test()
-    # TODO fix PCR distribution
-    # TODO pretty print MutationalSpectum
-
     #Part 2.
     test_wayne()
-    # TODO add the following:
-    # glue-it
-    # codoncalculator
-    # aa-calculator
-    # Pedel
-    # pedel-AA
-    # driver
+
     # TODO zero for unknown position
     '''
-    Pipedreams and other...
+    ## To Do
+    * Learn how Pedel-AA works and strategise
+    * fix PCR distribution in Mutanalyst
+    * fix zero for unknown positions in Mutanalyst
+    * pretty print MutationalSpectum
+    * Learn what does glueit do.
+    * What was LibraryStatistics meant to do?
+    * codoncalculator
+    * aa-calculator
+    * Pedel extras
+    * pedel-AA
+    * driver
+    ## Pipedreams and other...
     * violin plot and other epPCR diversity tools.
     * solver for optimal codon?
     * script to find amino acid equivalents?
