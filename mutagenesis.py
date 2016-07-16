@@ -8,7 +8,7 @@ import numpy as np
 from scipy import misc, optimize, special
 import math
 import re
-import warnings
+from warnings import warn
 
 from collections import OrderedDict
 
@@ -276,7 +276,7 @@ class Mutation:
                 mutation = str(rexprotsub.group(2)) + "\u0394" + str(rexprotsub.group(1))
                 rexnucldel = re.match("(\d+)\u0394(\w?)", mutation)  # 234delA
             elif mutation.find(">") != -1:  # 234A>T
-                warnings.warn('forceDNA flag called even if DNA mutation given')
+                warn('forceDNA flag called even if DNA mutation given')
             else:
                 MutationFormatError()
         # NUCLEOTIDE
@@ -725,7 +725,7 @@ class MutationSpectrum:  # is this needed for Pedel?
             self.base_frequency = {b: self.seq.count(b) / sum(self.base_count.values()) for b in self._bases}
             # sum(self.base_count.values()) and not len(self.seq) becuase the former loses the Ns Xs and weirdos that somehow were smuggled in.
         else:
-            warnings.warn("Sequence not given, default (equal base frequency) used")
+            warn("Sequence not given, default (equal base frequency) used")
 
     def _calculate_se_table(self):
         """
@@ -1134,12 +1134,19 @@ def test_wayne():
     comp("Glue library", glue_library(1e6, 0.95), 2.996e6)
     comp("Glue prob", glue_probability(1e6, 0.95), 1.679e7)
     comp("Pedel", pedel(1e7, 1000, 4, poisson), 8.872e6)
+    warn('Glue (figure out what user wants) not finished')
+    warn('Driver and LibraryStatistics not done')
+    warn('Glue-it (AA version of glue), Pedel-AA (AA version of pedel)')
 
 
 if __name__ == "__main__":
-    test()
+    #Part 1.
+    #test()
     # TODO fix PCR distribution
     # TODO pretty print MutationalSpectum
+
+    #Part 2.
+    test_wayne()
     # TODO add the following:
     # glue-it
     # codoncalculator
@@ -1148,3 +1155,9 @@ if __name__ == "__main__":
     # pedel-AA
     # driver
     # TODO zero for unknown position
+    '''
+    Pipedreams and other...
+    * violin plot and other epPCR diversity tools.
+    * solver for optimal codon?
+    * script to find amino acid equivalents?
+    '''
