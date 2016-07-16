@@ -1,5 +1,7 @@
 # Mutants!
 Biopython is lacking when it comes to mutagenesis. Hopefully this module will help!
+This module will be the basis of a revamped Pedel server, you can see the proto-pre-alpha
+at [pedel2-matteoferla.rhcloud.com](pedel2-matteoferla.rhcloud.com).
 
 > This is pre-release. You can use some features of it, but some might not work or might change in future.
 
