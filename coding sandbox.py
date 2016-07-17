@@ -12,7 +12,6 @@ class test:
         print(x)
         return self.data[x[0]][x[1]]
 
-
 class outer:
     class inner:
         def __init__(self):
