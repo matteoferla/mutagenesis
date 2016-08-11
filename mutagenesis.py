@@ -1186,6 +1186,7 @@ if __name__ == "__main__":
     * Learn what does glueit do.
     * What was LibraryStatistics meant to do?
     http://www.ncbi.nlm.nih.gov/pmc/articles/PMC2447733/
+    http://guinevere.otago.ac.nz/mlrgd/STATS/FORM/pedel-AA-stats.html
     * codoncalculator
     * aa-calculator
     * Pedel extras
