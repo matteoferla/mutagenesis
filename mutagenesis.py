@@ -554,7 +554,7 @@ class MutationLoad:
     def __init__(self, mutants, pcr_efficiency=None, pcr_cycles=32):
         self.mutation_tally = []
         self.seq = None
-        for variant in mutants:
+        for variant in mutants:  #Repetition! `_process_mutations_from_mutants` in Mutational Spectrum does the same.
             assert type(variant) is MutationDNASeq, str(variant) + " is not a instance of MutationDNASeq as expected."
             self.mutation_tally.append(len(variant.mutations))
             if not self.seq and variant.wt:
@@ -562,17 +562,21 @@ class MutationLoad:
             elif variant.wt:
                 assert self.seq == variant.wt, " Mutants appear to not be variants of the same wt sequence"
         tally = np.array(self.mutation_tally)  # make np earlier still?
-        self.mutation_frequency = np.bincount(tally)  # overkill?
-        self.mean = NumSEM(tally.mean(), tally.std() / np.sqrt(len(tally)))
+        self.mutation_frequency = np.bincount(tally)/sum(tally) # overkill backfired...?
+        self.mean = NumSEM(tally.mean(), tally.std() / np.sqrt(len(tally))-1)
         self.arange = np.arange(0, tally.max() + 1)
         parameters, cov_matrix = optimize.curve_fit(poisson, self.arange, self.mutation_frequency)
-        self.lamb = NumSEM(parameters[0], np.sqrt(np.diag(cov_matrix)))
+        # np.sqrt(np.diag(cov_matrix)) is not se. I did not read the manual correctly
+        print(poisson(self.arange, *parameters))
+        print(self.mutation_frequency)
+        self.lamb = NumSEM(parameters[0], np.sqrt(np.sum((poisson(self.arange, *parameters) - self.mutation_frequency)**2))/(len(self.arange)-1))
         if pcr_efficiency:
             self.pcr_efficiency = pcr_efficiency
             self.pcr_cycles = pcr_cycles
             pcr = pcr_distribution_factory(self.pcr_efficiency, self.pcr_cycles)
             parameters, cov_matrix = optimize.curve_fit(pcr, self.arange, self.mutation_frequency)
-            self.pcr = NumSEM(parameters[0], np.sqrt(np.diag(cov_matrix)))
+            self.pcr = NumSEM(parameters[0], np.sqrt(np.sum((pcr(self.arange, *parameters) - self.mutation_frequency)**2 ))/(len(self.arange)-1))
+            warn('se is not np.sqrt(np.diag(cov_matrix)), but LSq over n')
         else:
             self.pcr_efficiency = None
             self.pcr_cycles = None
@@ -833,6 +837,9 @@ class NumSEM:
             txt = "{:." + str(sig) + "f}" + s + "±" + s + "{:." + str(sig) + "f}"
             return txt.format(self._num, self._sem)
 
+    def __float__(self):
+        return self._num
+
     def __add__(self, other):
         """
         Returns the addition of either two NumSEM objects or a NumSEM and a float/int
@@ -1016,8 +1023,8 @@ def glue(vsize, lsize=None, completeness=None, probability=None):  # TODO UNFINI
     if not lsize:
         if not completeness and not probability:
             pass
-    raise Exception('NOT FINISHED. I need to think when certain features would be useful')
-
+    warn('NOT FINISHED. I need to think when certain features would be useful')
+    raise NotImplementedError
 
 def pedel(lsize, seq_len, mps, dist_fx=poisson):
     """
@@ -1027,7 +1034,7 @@ def pedel(lsize, seq_len, mps, dist_fx=poisson):
     >>> pedel(1e6,len(wt),4,pcr_distribution_factory(0.4, 32))
     :param lsize: library size
     :param seq_len: sequence length (bases)
-    :param mps: mutation per seq.
+    :param mps: mutation per seq. (mutational load)
     :param dist_fx: function of the distribution
     :return: number of distinct sequences in library
     """
@@ -1068,6 +1075,25 @@ def pedel(lsize, seq_len, mps, dist_fx=poisson):
         lsize * (1 - sum([dist_fx(x, mps) for x in range(0, s2)]))
     return C
 
+def pedel_AA(seq, lsize, seq_len, mps, spectrum, dist_fx=poisson):
+    """
+    Pedel calculates library diversity given library size and mutational load.
+    For poisson distribution use poisson (default).
+    For pcr distribution, use first pcr_distribution_factory(efficiency, cycles) to obtain a function specific to those parameters.
+    >>> pedel(1e6,len(wt),4,pcr_distribution_factory(0.4, 32))
+    :param seq: a nt sequence object (a string, "wild type" Biopython Seq or a MutationDNASeq)
+    :param lsize: library size
+    :param seq_len: sequence length (bases)
+    :param mps: mutation per seq. (mutational load)
+    :param spectrum: mutational spectrum
+    :param dist_fx: function of the distribution
+    :return: number of distinct sequences in effective library
+    """
+    #effective library
+    lbroken=0
+    leff=lsize-lbroken
+    raise NotImplementedError
+
 
 def driver(lsize, seq_len, cross, positions, observable=True):
     """
@@ -1079,21 +1105,15 @@ def driver(lsize, seq_len, cross, positions, observable=True):
     :param observable: boolean for observable (True) or all (False) crossovers
     :return: number of possible seqs, expected number of distinct seqs, mean num of actual cross, mean num of obs cross.
     """
-    pass
+    raise NotImplementedError
 
-
-class LibraryStatistics:
-    def __init__(self, lsize, mload, mspectrum):
-        """
-
-        :param lsize: library size
-        :param mload: mutation load
-        :param mspectrum: mutatinal spectrum
-        :return:
-        """
-        pass
-    pass
-
+class Library:
+    def __init__(self, seq, mutations): #PCR!
+        self.seq=wt = MutationDNASeq(seq)
+        self.sampled_mutations=wt.variants(mutations,forceDNA=True)
+        self.spectrum=MutationSpectrum(self.sampled_mutations)
+        self.load=MutationLoad(self.sampled_mutations)
+        raise NotImplementedError
 
 def test_mutanalyst():
     wt = MutationDNASeq(
@@ -1112,7 +1132,6 @@ def test_mutanalyst():
     print("Exp",1.3,"Calc",MutationLoad(mutball).lamb._num)
     print("Test complete")
 
-
 def test_wayne():
     def comp(n, a, b):
         print("{0}= found:{1} exp:{2}".format(n, a, b))
@@ -1125,13 +1144,38 @@ def test_wayne():
     warn('Driver and LibraryStatistics not done')
     warn('Glue-it (AA version of glue), Pedel-AA (AA version of pedel)')
 
+def troubleshooting_load():
+    print('There is an error in mutational load earmarked with too little detail.')
+    print('test with made up data seems okay')
+    print('I think the se is not np.sqrt(np.diag(cov_matrix))')
+    wt = MutationDNASeq(
+        "ATGAACACAGACGACATTCTGTTTTCTTACGGAGAAGAAGACATTCCTTTGAAGGCGCTGTCGTTTCCCATCTTCGAAACGACGAATTTCTACTTCGACAGTTTCGACGAGATGTCGAAAGCCCTCAGAAACGGAGACTACGAATTCGTTTACAAAAGAGGAAGTAATCCCACAACGAGACTGGTGGAGAAGAAACTCGCAGCGCTTGAAGAGTGTGAAGATGCCCGCCTCGTTGCCTCTGGAATGAGCGCCATTTCGCTTTCCATCCTTCATTTCCTCAGCTCGGGAGACCACGTCGTGTGTGTGGACGAGGCTTACTCCTGGGCGAAAAAGTTCTTCAACTACCTTTCAAAGAAGTTCGATATAGAAGTCAGCTACGTTCCTCCCGACGCGGAAAGAATAGTCGAAGCCATCACGAAGAAGACGAAGCTCATCTACCTCGAAAGTCCCACGAGTATGAGAATGAAAGTGATCGATATAAGAAAGGTCACAGAAGCGGCAGGAGAACTCAAGATAAAAACCGTCATAGACAACACCTGGGCGTCGCCGATCTTTCAAAAACCAAAGCTTCTGGGAGTGGATGTGGTGGTCCACTCTGCGACGAAGTACATCTCAGGACACGGAGACGTGATGGCAGGAGTGATCGCAGGAGACGTCGAAGATATGAAGAACATCTTCGTGGATGAATACAAAAACATCGGACCGGTTCTCTCGCCCATAGAAGCCTGGCTCATCTTGAGAGGTCTTAGAACGCTGGAACTCCGTATGAAAAAGCACTACGAAAACGCTCTTGTGGTGTCTGACTTCCTCATGGATCACCCGAAGGTCCTCGAGGTGAACTACCCGATGAATCCAAGATCACCGCAGTACGAACTCGCTTCCTCTCAGATGAGCGGTGGCTCAGGACTGATGAGCTTCAGGCTGAAAACGGACAGCGCAGAGAAAGTCAAAGAGTTCGTCGAAAGTCTGAGGGTTTTCAGGATGGCTGTGAGCTGGGGAAGTCACGAGAACCTTGTTGTTCCAAGGGTGGCTTATGGAGACTGCCCGAAAAAAGACGTGAACCTGATAAGAATCCATGTGGGTCTCGGAGATCCAGAAAAGCTCGTGGAAGATCTGGATCAGGCACTCAAAAAGATTTAA")
+    print('''Matlab:
+        lam=1;
+        s=5;
+        x=poissrnd(lam,s,1);
+        display(sort(x));
+        xi=hist(x);
+        m=sum(x)/s;
+        display(m);
+        sx=sqrt(sum((lam-xi).^2))/(s-1);
+        display(sx)''')
+    #mutball = wt.variants("wt\nA0T A0T\nA0T A0T\nA0T A0T\nA0T A0T\nA0T A0T\nA0T A0T\nA0T A0T A0T\nA0T A0T A0T\nA0T A0T A0T A0T", forceDNA=True)
+    #mutball = wt.variants("A0T\nA0T\nA0T A0T\nA0T A0T\nA0T A0T A0T A0T", forceDNA=True)
+    #mutball = wt.variants("wt\nA0T A0T\nA0T A0T A0T A0T", forceDNA=True)  #should be 2.
+    #mutball = wt.variants("A0T\nA0T\nA0T A0T A0T", forceDNA=True)  # should be 2.
+    #mutball = wt.variants("wt\nwt\nA0T\nA0T\nA0T", forceDNA=True)
+    mutball = wt.variants("wt\nA0T\nA0T\nA0T\nA0T\nA0T\nA0T\nA0T A0T\nA0T A0T A0T\nA0T A0T A0T A0T", forceDNA=True)
+    x=MutationLoad(mutball)
+    print(x.lamb._num,'±',x.lamb._sem)
+
 
 if __name__ == "__main__":
     #Part 1.
-    test_mutanalyst()
+    #test_mutanalyst()
     #Part 2.
-    test_wayne()
-
+    #test_wayne()
+    troubleshooting_load()
     # TODO zero for unknown position
     '''
     ## To Do
