@@ -1168,6 +1168,7 @@ def troubleshooting_load():
     mutball = wt.variants("wt\nA0T\nA0T\nA0T\nA0T\nA0T\nA0T\nA0T A0T\nA0T A0T A0T\nA0T A0T A0T A0T", forceDNA=True)
     x=MutationLoad(mutball)
     print(x.lamb._num,'±',x.lamb._sem)
+    print('SEM is wrong. Too low. Why?')
 
 
 if __name__ == "__main__":
