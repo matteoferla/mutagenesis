@@ -1172,10 +1172,12 @@ def troubleshooting_load():
 
 if __name__ == "__main__":
     #Part 1.
-    #test_mutanalyst()
+    test_mutanalyst()
     #Part 2.
-    #test_wayne()
-    troubleshooting_load()
+    test_wayne()
+
+    #SE might be dodgy...
+    # troubleshooting_load()
     # TODO zero for unknown position
     '''
     ## To Do
