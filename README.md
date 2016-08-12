@@ -4,6 +4,7 @@ This module will be the basis of a revamped Pedel server, you can see the proto-
 at [pedel2-matteoferla.rhcloud.com](pedel2-matteoferla.rhcloud.com).
 
 > This is pre-release. You can use some features of it, but some might not work or might change in future.
+> Also the code contains a lot of features that are not documented here. This is a just a MD version of the actual docstring, so best check there for an upto date details.
 
 # Usage
 This Python module allow an easy way to add mutations (either nucleic acid or protein) to a nucleic acid sequence.
