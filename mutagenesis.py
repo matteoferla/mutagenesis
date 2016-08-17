@@ -1184,23 +1184,3 @@ if __name__ == "__main__":
 
     #SE might be dodgy...
     # troubleshooting_load()
-    # TODO zero for unknown position
-    '''
-    ## To Do
-    * Learn how Pedel-AA works and strategise
-    * fix PCR distribution in Mutanalyst
-    * pretty print MutationalSpectum
-    * Learn what does glueit do.
-    * What was LibraryStatistics meant to do?
-    http://www.ncbi.nlm.nih.gov/pmc/articles/PMC2447733/
-    http://guinevere.otago.ac.nz/mlrgd/STATS/FORM/pedel-AA-stats.html
-    * codoncalculator
-    * aa-calculator
-    * Pedel extras
-    * pedel-AA
-    * driver
-    ## Pipedreams and other...
-    * violin plot and other epPCR diversity tools.
-    * solver for optimal codon?
-    * script to find amino acid equivalents?
-    '''
