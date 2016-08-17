@@ -4,6 +4,7 @@
 * Understand how Pedel-AA works and strategise
 * Understand how Glue-it works and strategise
 * Pedel extras — do when server is near complete
+* Driver... how is true crossover calculated?
 
 [http://www.ncbi.nlm.nih.gov/pmc/articles/PMC2447733/](Wayne's paper)
 [http://guinevere.otago.ac.nz/mlrgd/STATS/FORM/pedel-AA-stats.html](Old site)

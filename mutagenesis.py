@@ -1144,6 +1144,8 @@ def driver(lsize, seq_len, cross, positions, observable=True):
         c += 1-(1 - bp / 2) ** lsize
         # print(bsum_check)
     print(c, '≠',67.96)
+    print('cross obs maths not done.')
+    raise NotImplementedError
 
 
 
