@@ -579,7 +579,7 @@ class MutationLoad:
         print(self.mutation_frequency)
         self.lamb = NumSEM(parameters[0],
                            np.sqrt(np.sum((poisson(self.arange, *parameters) - self.mutation_frequency) ** 2)) / (
-                           len(self.arange) - 1))
+                               len(self.arange) - 1))
         if pcr_efficiency:
             self.pcr_efficiency = pcr_efficiency
             self.pcr_cycles = pcr_cycles
@@ -587,7 +587,7 @@ class MutationLoad:
             parameters, cov_matrix = optimize.curve_fit(pcr, self.arange, self.mutation_frequency)
             self.pcr = NumSEM(parameters[0],
                               np.sqrt(np.sum((pcr(self.arange, *parameters) - self.mutation_frequency) ** 2)) / (
-                              len(self.arange) - 1))
+                                  len(self.arange) - 1))
             warn('se is not np.sqrt(np.diag(cov_matrix)), but LSq over n')
         else:
             self.pcr_efficiency = None
@@ -1123,23 +1123,27 @@ def driver(lsize, seq_len, cross, positions, observable=True):
     :param observable: boolean for observable (True) or all (False) crossovers
     :return: number of possible seqs, expected number of distinct seqs, mean num of actual cross, mean num of obs cross.
     """
-    m=len(positions)
-    possible_seq=2**m
-    distances=[zb-za for za,zb in zip(positions,positions[1:])] #Is this a Perl flashback nostalgia?
-    print(distances)
-    print(sum([positions[0]-1]+distances+[seq_len-positions[-1]]),seq_len-1)
-    exponential_factors = [math.exp(-2*(ni-1)*cross/(seq_len-m-1)) for ni in distances]
-    blist=product(range(2),repeat=m-1)
-    print(possible_seq,len(list(blist)))
-    bsum=0
-    for b in blist: #b is a tuple of m zeros..
-        bp=1 #Guido did not add a prod() hence this ugly thing
-        for i,bk in enumerate(b[:-1]):
-            if bk==0:
-                bp*=0.5*(1-exponential_factors[i])
-            elif bk==1:
+    m = len(positions)
+    possible_seq = 2 ** m
+    distances = [zb - za for za, zb in zip(positions, positions[1:])]  # Is this a Perl flashback nostalgia?
+    # print(distances)
+    # print(sum([positions[0]-1]+distances+[seq_len-positions[-1]]),seq_len-1)
+    exponential_factors = [math.exp(-2 * (ni - 1) * cross / (seq_len - m - 1)) for ni in distances]
+    blist = product(range(2), repeat=m - 1)
+    # print(possible_seq,len(list(blist)))
+    bsum_check = 0
+    c = 0
+    for b in blist:  # b is a tuple of m zeros..
+        bp = 1  # Guido did not add a prod() hence this ugly thing
+        for i, bk in enumerate(b[:-1]):
+            if bk == 0:
+                bp *= 0.5 * (1 - exponential_factors[i])
+            elif bk == 1:
                 bp *= 0.5 * (1 + exponential_factors[i])
-        bsum+=bp
+        bsum_check += bp
+        c += 1-(1 - bp / 2) ** lsize
+        # print(bsum_check)
+    print(c, '≠',67.96)
 
 
 
@@ -1148,13 +1152,13 @@ def driver(lsize, seq_len, cross, positions, observable=True):
 
 
 
-    #raise NotImplementedError
+        # raise NotImplementedError
 
 
 class Library:
     def __init__(self, seq, mutations):  # PCR!
-        if isinstance(seq,MutationDNASeq):
-            self.seq=seq
+        if isinstance(seq, MutationDNASeq):
+            self.seq = seq
         else:
             self.seq = MutationDNASeq(seq)
         self.sampled_mutations = wt.variants(mutations, forceDNA=True)
@@ -1223,10 +1227,10 @@ def troubleshooting_load():
 
 if __name__ == "__main__":
     # Part 1.
-    #test_mutanalyst()
+    # test_mutanalyst()
     # Part 2.
-    #test_wayne()
-    driver(1600,1425,2,[250, 274, 375, 650, 655, 757, 763, 982, 991])
+    # test_wayne()
+    driver(1600, 1425, 2, [250, 274, 375, 650, 655, 757, 763, 982, 991])
 
     # SE might be dodgy...
     # troubleshooting_load()
