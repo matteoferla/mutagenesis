@@ -1124,23 +1124,31 @@ def driver(lsize, seq_len, cross, positions, observable=True):
     :return: number of possible seqs, expected number of distinct seqs, mean num of actual cross, mean num of obs cross.
     """
     m=len(positions)
-    possible_seq=2^m
+    possible_seq=2**m
     distances=[zb-za for za,zb in zip(positions,positions[1:])] #Is this a Perl flashback nostalgia?
+    print(distances)
     print(sum([positions[0]-1]+distances+[seq_len-positions[-1]]),seq_len-1)
     exponential_factors = [math.exp(-2*(ni-1)*cross/(seq_len-m-1)) for ni in distances]
     blist=product(range(2),repeat=m-1)
-    print(possible_seq,len(blist))
+    print(possible_seq,len(list(blist)))
+    bsum=0
     for b in blist: #b is a tuple of m zeros..
-        bp=1
-        for i,bk in enumerate(b):
-            bp*=
+        bp=1 #Guido did not add a prod() hence this ugly thing
+        for i,bk in enumerate(b[:-1]):
+            if bk==0:
+                bp*=0.5*(1-exponential_factors[i])
+            elif bk==1:
+                bp *= 0.5 * (1 + exponential_factors[i])
+        bsum+=bp
 
 
 
 
 
 
-    raise NotImplementedError
+
+
+    #raise NotImplementedError
 
 
 class Library:
@@ -1215,9 +1223,10 @@ def troubleshooting_load():
 
 if __name__ == "__main__":
     # Part 1.
-    test_mutanalyst()
+    #test_mutanalyst()
     # Part 2.
-    test_wayne()
+    #test_wayne()
+    driver(1600,1425,2,[250, 274, 375, 650, 655, 757, 763, 982, 991])
 
     # SE might be dodgy...
     # troubleshooting_load()
