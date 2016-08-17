@@ -25,6 +25,7 @@
 ** Security
 ** Edit md there or Google drive folder?
 * Add sections for Pedel etc.
+** Figure out how the tables of the statistics will be.
 * Add JS
 * Discuss with Wayne the esthetics
 ** Modals?
