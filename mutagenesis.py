@@ -45,7 +45,12 @@ class Mutation:
     * from_codon, to_codon: codon from and to
     * type: synonymous, non-synonymous and nonsense, and frameshift
     * is_substitution: true if a substitution
-    It does not check whether the nucleotides are legitimate.
+    It checks whether the mutation is legittimate if the position is not zero. If it is not it will raise an Error.
+    It does not change the sequence passed as argument. To do that use:
+    >>> dna = MutationDNASeq('ATG')
+    >>> dna.mutate('1A>T') #alters the MutationDNASeq object itself
+    >>> dna.variant('1A>T') #returns a copy of the MutationDNASeq object
+
 
     Has also the method apply which returns a string where the mutation is applied to the Seq object (unchanged).
     """
@@ -1184,7 +1189,6 @@ if __name__ == "__main__":
     ## To Do
     * Learn how Pedel-AA works and strategise
     * fix PCR distribution in Mutanalyst
-    * fix zero for unknown positions in Mutanalyst
     * pretty print MutationalSpectum
     * Learn what does glueit do.
     * What was LibraryStatistics meant to do?
