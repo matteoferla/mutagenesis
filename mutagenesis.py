@@ -11,7 +11,7 @@ import re
 from warnings import warn
 
 from collections import OrderedDict
-
+from itertools import product
 from Bio.Alphabet import NucleotideAlphabet
 from Bio.Data import CodonTable
 from Bio.Seq import Seq
@@ -1119,10 +1119,26 @@ def driver(lsize, seq_len, cross, positions, observable=True):
     :param lsize: library size
     :param seq_len: seq length
     :param cross: mean number of crossovers
-    :param positions: positions of variable bases
+    :param positions: list of positions of variable bases (numbered from 1 onwards)
     :param observable: boolean for observable (True) or all (False) crossovers
     :return: number of possible seqs, expected number of distinct seqs, mean num of actual cross, mean num of obs cross.
     """
+    m=len(positions)
+    possible_seq=2^m
+    distances=[zb-za for za,zb in zip(positions,positions[1:])] #Is this a Perl flashback nostalgia?
+    print(sum([positions[0]-1]+distances+[seq_len-positions[-1]]),seq_len-1)
+    exponential_factors = [math.exp(-2*(ni-1)*cross/(seq_len-m-1)) for ni in distances]
+    blist=product(range(2),repeat=m-1)
+    print(possible_seq,len(blist))
+    for b in blist: #b is a tuple of m zeros..
+        bp=1
+        for i,bk in enumerate(b):
+            bp*=
+
+
+
+
+
 
     raise NotImplementedError
 
