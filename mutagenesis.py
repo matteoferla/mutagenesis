@@ -28,8 +28,10 @@ T = "\t"
 * mutation
 * MutationFormatError
 * MutationDNASeq
+* MutationTable
 * mutationSpectrum
-This is a partial rewrite of mutanalyst js code. As a result a lot of attribute names are in camelCase, following JS style as opposed to PEP8.
+* MutationLoad
+* NumSEM
 """
 
 
@@ -463,10 +465,9 @@ class MutationDNASeq(Seq):
         :param forceDNA:
         :return:
         """
-        if isinstance(mutations,str):
-            mutations=filter(len,mutations.replace(";","\n").replace("\r","\n").split("\n"))
+        if isinstance(mutations, str):
+            mutations = filter(len, mutations.replace(";", "\n").replace("\r", "\n").split("\n"))
         return [MutationDNASeq(self.wt).mutate(m, forceDNA) for m in mutations]
-
 
     def to_regular_seq(self):
         """
@@ -526,12 +527,14 @@ class MutationTable:
                 self._bases}
 
     def __str__(self):
-        T="\t|"
-        B="-"
-        N="\n"
-        table="F/T"+T+T.join(self._bases.keys())+N
-        table+=B*len(table)+N
-        table+=N.join([fb+T+T.join([str(math.ceil(100*self[fb+">"+tb])/100) for tb in self._bases.keys()]) for fb in self._bases.keys()])
+        T = "\t|"
+        B = "-"
+        N = "\n"
+        table = "F/T" + T + T.join(self._bases.keys()) + N
+        table += B * len(table) + N
+        table += N.join(
+            [fb + T + T.join([str(math.ceil(100 * self[fb + ">" + tb]) / 100) for tb in self._bases.keys()]) for fb in
+             self._bases.keys()])
         return table
 
     def __iter__(self):
@@ -559,7 +562,7 @@ class MutationLoad:
     def __init__(self, mutants, pcr_efficiency=None, pcr_cycles=32):
         self.mutation_tally = []
         self.seq = None
-        for variant in mutants:  #Repetition! `_process_mutations_from_mutants` in Mutational Spectrum does the same.
+        for variant in mutants:  # Repetition! `_process_mutations_from_mutants` in Mutational Spectrum does the same.
             assert type(variant) is MutationDNASeq, str(variant) + " is not a instance of MutationDNASeq as expected."
             self.mutation_tally.append(len(variant.mutations))
             if not self.seq and variant.wt:
@@ -567,20 +570,24 @@ class MutationLoad:
             elif variant.wt:
                 assert self.seq == variant.wt, " Mutants appear to not be variants of the same wt sequence"
         tally = np.array(self.mutation_tally)  # make np earlier still?
-        self.mutation_frequency = np.bincount(tally)/sum(tally) # overkill backfired...?
-        self.mean = NumSEM(tally.mean(), tally.std() / np.sqrt(len(tally))-1)
+        self.mutation_frequency = np.bincount(tally) / sum(tally)  # overkill backfired...?
+        self.mean = NumSEM(tally.mean(), tally.std() / np.sqrt(len(tally)) - 1)
         self.arange = np.arange(0, tally.max() + 1)
         parameters, cov_matrix = optimize.curve_fit(poisson, self.arange, self.mutation_frequency)
         # np.sqrt(np.diag(cov_matrix)) is not se. I did not read the manual correctly
         print(poisson(self.arange, *parameters))
         print(self.mutation_frequency)
-        self.lamb = NumSEM(parameters[0], np.sqrt(np.sum((poisson(self.arange, *parameters) - self.mutation_frequency)**2))/(len(self.arange)-1))
+        self.lamb = NumSEM(parameters[0],
+                           np.sqrt(np.sum((poisson(self.arange, *parameters) - self.mutation_frequency) ** 2)) / (
+                           len(self.arange) - 1))
         if pcr_efficiency:
             self.pcr_efficiency = pcr_efficiency
             self.pcr_cycles = pcr_cycles
             pcr = pcr_distribution_factory(self.pcr_efficiency, self.pcr_cycles)
             parameters, cov_matrix = optimize.curve_fit(pcr, self.arange, self.mutation_frequency)
-            self.pcr = NumSEM(parameters[0], np.sqrt(np.sum((pcr(self.arange, *parameters) - self.mutation_frequency)**2 ))/(len(self.arange)-1))
+            self.pcr = NumSEM(parameters[0],
+                              np.sqrt(np.sum((pcr(self.arange, *parameters) - self.mutation_frequency) ** 2)) / (
+                              len(self.arange) - 1))
             warn('se is not np.sqrt(np.diag(cov_matrix)), but LSq over n')
         else:
             self.pcr_efficiency = None
@@ -589,9 +596,9 @@ class MutationLoad:
 
     def __str__(self):
         if self.pcr:
-            return "PCR distribution: "+str(self.pcr)
+            return "PCR distribution: " + str(self.pcr)
         else:
-            return "Poisson distribution: "+str(self.lamb)
+            return "Poisson distribution: " + str(self.lamb)
 
 
 def pcr_distribution_factory(efficiency, cycles):
@@ -1031,6 +1038,7 @@ def glue(vsize, lsize=None, completeness=None, probability=None):  # TODO UNFINI
     warn('NOT FINISHED. I need to think when certain features would be useful')
     raise NotImplementedError
 
+
 def pedel(lsize, seq_len, mps, dist_fx=poisson):
     """
     Pedel calculates library diversity given library size and mutational load.
@@ -1080,6 +1088,7 @@ def pedel(lsize, seq_len, mps, dist_fx=poisson):
         lsize * (1 - sum([dist_fx(x, mps) for x in range(0, s2)]))
     return C
 
+
 def pedel_AA(seq, lsize, seq_len, mps, spectrum, dist_fx=poisson):
     """
     Pedel calculates library diversity given library size and mutational load.
@@ -1094,15 +1103,19 @@ def pedel_AA(seq, lsize, seq_len, mps, spectrum, dist_fx=poisson):
     :param dist_fx: function of the distribution
     :return: number of distinct sequences in effective library
     """
-    #effective library
-    lbroken=0
-    leff=lsize-lbroken
+    # effective library
+    lbroken = 0
+    leff = lsize - lbroken
     raise NotImplementedError
 
 
 def driver(lsize, seq_len, cross, positions, observable=True):
     """
-    DRIVeR.
+    Given a library of L sequences generated by random recombination
+    of two near-identical genes differing at only a small number of known nucleotide (or amino acid) positions,
+    we wish to calculate the expected number of distinct sequences in the library.
+    (Typically assuming the mean number of crossovers per sequence m < 0.1 x sequence length N).
+    Even if DRIVeR is a (forced) backronym for Diversity Resulting from In vitro Recombination, this method is in lowercase due to PEP8.
     :param lsize: library size
     :param seq_len: seq length
     :param cross: mean number of crossovers
@@ -1110,21 +1123,27 @@ def driver(lsize, seq_len, cross, positions, observable=True):
     :param observable: boolean for observable (True) or all (False) crossovers
     :return: number of possible seqs, expected number of distinct seqs, mean num of actual cross, mean num of obs cross.
     """
+
     raise NotImplementedError
 
+
 class Library:
-    def __init__(self, seq, mutations): #PCR!
-        self.seq=wt = MutationDNASeq(seq)
-        self.sampled_mutations=wt.variants(mutations,forceDNA=True)
-        self.spectrum=MutationSpectrum(self.sampled_mutations)
-        self.load=MutationLoad(self.sampled_mutations)
+    def __init__(self, seq, mutations):  # PCR!
+        if isinstance(seq,MutationDNASeq):
+            self.seq=seq
+        else:
+            self.seq = MutationDNASeq(seq)
+        self.sampled_mutations = wt.variants(mutations, forceDNA=True)
+        self.spectrum = MutationSpectrum(self.sampled_mutations)
+        self.load = MutationLoad(self.sampled_mutations)
         raise NotImplementedError
+
 
 def test_mutanalyst():
     wt = MutationDNASeq(
         "ATGAACACAGACGACATTCTGTTTTCTTACGGAGAAGAAGACATTCCTTTGAAGGCGCTGTCGTTTCCCATCTTCGAAACGACGAATTTCTACTTCGACAGTTTCGACGAGATGTCGAAAGCCCTCAGAAACGGAGACTACGAATTCGTTTACAAAAGAGGAAGTAATCCCACAACGAGACTGGTGGAGAAGAAACTCGCAGCGCTTGAAGAGTGTGAAGATGCCCGCCTCGTTGCCTCTGGAATGAGCGCCATTTCGCTTTCCATCCTTCATTTCCTCAGCTCGGGAGACCACGTCGTGTGTGTGGACGAGGCTTACTCCTGGGCGAAAAAGTTCTTCAACTACCTTTCAAAGAAGTTCGATATAGAAGTCAGCTACGTTCCTCCCGACGCGGAAAGAATAGTCGAAGCCATCACGAAGAAGACGAAGCTCATCTACCTCGAAAGTCCCACGAGTATGAGAATGAAAGTGATCGATATAAGAAAGGTCACAGAAGCGGCAGGAGAACTCAAGATAAAAACCGTCATAGACAACACCTGGGCGTCGCCGATCTTTCAAAAACCAAAGCTTCTGGGAGTGGATGTGGTGGTCCACTCTGCGACGAAGTACATCTCAGGACACGGAGACGTGATGGCAGGAGTGATCGCAGGAGACGTCGAAGATATGAAGAACATCTTCGTGGATGAATACAAAAACATCGGACCGGTTCTCTCGCCCATAGAAGCCTGGCTCATCTTGAGAGGTCTTAGAACGCTGGAACTCCGTATGAAAAAGCACTACGAAAACGCTCTTGTGGTGTCTGACTTCCTCATGGATCACCCGAAGGTCCTCGAGGTGAACTACCCGATGAATCCAAGATCACCGCAGTACGAACTCGCTTCCTCTCAGATGAGCGGTGGCTCAGGACTGATGAGCTTCAGGCTGAAAACGGACAGCGCAGAGAAAGTCAAAGAGTTCGTCGAAAGTCTGAGGGTTTTCAGGATGGCTGTGAGCTGGGGAAGTCACGAGAACCTTGTTGTTCCAAGGGTGGCTTATGGAGACTGCCCGAAAAAAGACGTGAACCTGATAAGAATCCATGTGGGTCTCGGAGATCCAGAAAAGCTCGTGGAAGATCTGGATCAGGCACTCAAAAAGATTTAA")
-    mutations="G286A T305C A687T T880C\nWT\nWT\nC372T A932G\nG832A\nA651C\nA720C\nC449A A557G A815G A847G C821T C1056T\nG793A\nA1048G\nG724T\nG981C\nC56T G669T T797A\nA243T A476G A593T C960T\nA180T\nT859A\nA979T A1004T\nC452T\nWT"
-    mutball=wt.variants(mutations,forceDNA=True)
+    mutations = "G286A T305C A687T T880C\nWT\nWT\nC372T A932G\nG832A\nA651C\nA720C\nC449A A557G A815G A847G C821T C1056T\nG793A\nA1048G\nG724T\nG981C\nC56T G669T T797A\nA243T A476G A593T C960T\nA180T\nT859A\nA979T A1004T\nC452T\nWT"
+    mutball = wt.variants(mutations, forceDNA=True)
     spectro = MutationSpectrum(mutball)
     print("Raw:")
     print(spectro.raw_table)
@@ -1134,8 +1153,9 @@ def test_mutanalyst():
     print(spectro.avg_table)
     print(spectro)
     print("Something is wrong in MutationLoad....")
-    print("Exp",1.3,"Calc",MutationLoad(mutball).lamb._num)
+    print("Exp", 1.3, "Calc", MutationLoad(mutball).lamb._num)
     print("Test complete")
+
 
 def test_wayne():
     def comp(n, a, b):
@@ -1148,6 +1168,7 @@ def test_wayne():
     warn('Glue (figure out what user wants) not finished')
     warn('Driver and LibraryStatistics not done')
     warn('Glue-it (AA version of glue), Pedel-AA (AA version of pedel)')
+
 
 def troubleshooting_load():
     print('There is an error in mutational load earmarked with too little detail.')
@@ -1165,22 +1186,22 @@ def troubleshooting_load():
         display(m);
         sx=sqrt(sum((lam-xi).^2))/(s-1);
         display(sx)''')
-    #mutball = wt.variants("wt\nA0T A0T\nA0T A0T\nA0T A0T\nA0T A0T\nA0T A0T\nA0T A0T\nA0T A0T A0T\nA0T A0T A0T\nA0T A0T A0T A0T", forceDNA=True)
-    #mutball = wt.variants("A0T\nA0T\nA0T A0T\nA0T A0T\nA0T A0T A0T A0T", forceDNA=True)
-    #mutball = wt.variants("wt\nA0T A0T\nA0T A0T A0T A0T", forceDNA=True)  #should be 2.
-    #mutball = wt.variants("A0T\nA0T\nA0T A0T A0T", forceDNA=True)  # should be 2.
-    #mutball = wt.variants("wt\nwt\nA0T\nA0T\nA0T", forceDNA=True)
+    # mutball = wt.variants("wt\nA0T A0T\nA0T A0T\nA0T A0T\nA0T A0T\nA0T A0T\nA0T A0T\nA0T A0T A0T\nA0T A0T A0T\nA0T A0T A0T A0T", forceDNA=True)
+    # mutball = wt.variants("A0T\nA0T\nA0T A0T\nA0T A0T\nA0T A0T A0T A0T", forceDNA=True)
+    # mutball = wt.variants("wt\nA0T A0T\nA0T A0T A0T A0T", forceDNA=True)  #should be 2.
+    # mutball = wt.variants("A0T\nA0T\nA0T A0T A0T", forceDNA=True)  # should be 2.
+    # mutball = wt.variants("wt\nwt\nA0T\nA0T\nA0T", forceDNA=True)
     mutball = wt.variants("wt\nA0T\nA0T\nA0T\nA0T\nA0T\nA0T\nA0T A0T\nA0T A0T A0T\nA0T A0T A0T A0T", forceDNA=True)
-    x=MutationLoad(mutball)
-    print(x.lamb._num,'±',x.lamb._sem)
+    x = MutationLoad(mutball)
+    print(x.lamb._num, '±', x.lamb._sem)
     print('SEM is wrong. Too low. Why?')
 
 
 if __name__ == "__main__":
-    #Part 1.
+    # Part 1.
     test_mutanalyst()
-    #Part 2.
+    # Part 2.
     test_wayne()
 
-    #SE might be dodgy...
+    # SE might be dodgy...
     # troubleshooting_load()
