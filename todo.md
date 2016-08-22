@@ -1,7 +1,7 @@
 ## To Do
-### NotImplementedError
+### Stuff that gives NotImplementedError
 #### Technically tricky
-* Understand how Pedel-AA works and strategise
+* Understand how Pedel-AA works and strategise —I am stuck at the mapping function
 * Understand how Glue-it works and strategise
 * Pedel extras — do when server is near complete
 * Driver... how is true crossover calculated?

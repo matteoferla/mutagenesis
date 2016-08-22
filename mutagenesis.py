@@ -913,6 +913,7 @@ class NumSEM:
                    b)  # I am unsure if min is best, hence the method. I assume that the worst case scenario is the smallest.
         # Also it is not degrees of freedom but sample size...
 
+##### Making of defs
 
 def mincodondist(codon, aa):
     # there must be a more elegant way, but this will do. Serine and stop are the problematic ones.
@@ -987,6 +988,21 @@ def generateCodonCodex():
 
 
 ##### Wayne's stuff
+# This part is not OO yet.
+
+class Library:
+    """
+    Wrapper for all parts...
+    """
+    def __init__(self, seq, mutations):  # PCR!
+        if isinstance(seq, MutationDNASeq):
+            self.seq = seq
+        else:
+            self.seq = MutationDNASeq(seq)
+        self.sampled_mutations = wt.variants(mutations, forceDNA=True)
+        self.spectrum = MutationSpectrum(self.sampled_mutations)
+        self.load = MutationLoad(self.sampled_mutations)
+        raise NotImplementedError
 
 def glue_completeness(vsize, lsize):
     """
@@ -1144,30 +1160,10 @@ def driver(lsize, seq_len, cross, positions, observable=True):
         c += 1-(1 - bp / 2) ** lsize
         # print(bsum_check)
     print(c, '≠',67.96)
-    print('cross obs maths not done.')
+    warn('cross obs maths not done.')
     raise NotImplementedError
 
-
-
-
-
-
-
-
-        # raise NotImplementedError
-
-
-class Library:
-    def __init__(self, seq, mutations):  # PCR!
-        if isinstance(seq, MutationDNASeq):
-            self.seq = seq
-        else:
-            self.seq = MutationDNASeq(seq)
-        self.sampled_mutations = wt.variants(mutations, forceDNA=True)
-        self.spectrum = MutationSpectrum(self.sampled_mutations)
-        self.load = MutationLoad(self.sampled_mutations)
-        raise NotImplementedError
-
+################TESTS#########################
 
 def test_mutanalyst():
     wt = MutationDNASeq(
@@ -1196,8 +1192,9 @@ def test_wayne():
     comp("Glue prob", glue_probability(1e6, 0.95), 1.679e7)
     comp("Pedel", pedel(1e7, 1000, 4, poisson), 8.872e6)
     warn('Glue (figure out what user wants) not finished')
-    warn('Driver and LibraryStatistics not done')
     warn('Glue-it (AA version of glue), Pedel-AA (AA version of pedel)')
+    driver(1600, 1425, 2, [250, 274, 375, 650, 655, 757, 763, 982, 991])
+
 
 
 def troubleshooting_load():
@@ -1232,7 +1229,7 @@ if __name__ == "__main__":
     # test_mutanalyst()
     # Part 2.
     # test_wayne()
-    driver(1600, 1425, 2, [250, 274, 375, 650, 655, 757, 763, 982, 991])
+
 
     # SE might be dodgy...
     # troubleshooting_load()
