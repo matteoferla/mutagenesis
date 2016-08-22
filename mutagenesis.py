@@ -1206,7 +1206,7 @@ def true_driver(lsize, seq_len, lambda_cross, positions, observable=True): #name
     lobs2 = subdriver(lsize, seq_len, lambda1, positions)
     diff = (lobsin-lobs2)/lobsin
     while abs(diff) > tolerance:
-        print(lambda1,lambda2)
+        print(lobs1,lobs2)
         if iteration > maxiter:
             raise Exception('Failed to converge on true crossover rate in '+str(maxiter))
         iteration += 1
@@ -1294,6 +1294,6 @@ if __name__ == "__main__":
     # test_wayne()
     # SE might be dodgy...
     # troubleshooting_load()
-    print('This is not working')
+    print('This is not working due to subdriver (my version of the code, which differs from driver.cxx)')
     true_driver(1600, 1425, 2, [250, 274, 375, 650, 655, 757, 763, 982, 991])
     pass
