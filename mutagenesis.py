@@ -915,6 +915,7 @@ class NumSEM:
                    b)  # I am unsure if min is best, hence the method. I assume that the worst case scenario is the smallest.
         # Also it is not degrees of freedom but sample size...
 
+
 ##### Making of defs ####################################################################################################
 
 def mincodondist(codon, aa):
@@ -996,6 +997,7 @@ class Library:
     """
     Wrapper for all parts...
     """
+
     def __init__(self, seq, mutations):  # PCR!
         if isinstance(seq, MutationDNASeq):
             self.seq = seq
@@ -1005,6 +1007,7 @@ class Library:
         self.spectrum = MutationSpectrum(self.sampled_mutations)
         self.load = MutationLoad(self.sampled_mutations)
         raise NotImplementedError
+
 
 def glue_completeness(vsize, lsize):
     """
@@ -1041,6 +1044,7 @@ def glue_probability(vsize, probability):
 def glue(vsize, lsize=None, completeness=None, probability=None):  # TODO UNFINISHED
     """
     Wrapper for the glue functions. Depending on what is given it will figure it out.
+    Most likely will be implemented on the JS level though?
     Glue calculates the library coverage/completeness.
     :param vsize: Number of possible variants
     :param lsize: library size required
@@ -1049,13 +1053,15 @@ def glue(vsize, lsize=None, completeness=None, probability=None):  # TODO UNFINI
     :return: dictionary
     """
     if not vsize:
-        raise Exception("Why would you not know that?")
-    if not lsize:
-        if not completeness and not probability:
-            pass
-    warn('NOT FINISHED. I need to think when certain features would be useful')
-    raise NotImplementedError
-
+        raise Exception("Without size of variants no glue calculations can be done")
+    elif not lsize and completeness:
+        lsize=glue_library(vsize, completeness)
+    elif not lsize and probability:
+        lsize = glue_probability(vsize, probability)
+    elif lsize and not completeness:
+        completeness=glue_completeness(vsize, lsize)
+    elif lsize and not probability:
+        raise NotImplementedError
 
 def pedel(lsize, seq_len, mps, dist_fx=poisson):
     """
@@ -1159,11 +1165,12 @@ def driver(lsize, seq_len, cross, positions, observable=True):
             elif bk == 1:
                 bp *= 0.5 * (1 + exponential_factors[i])
         bsum_check += bp
-        c += 1-(1 - bp / 2) ** lsize
+        c += 1 - (1 - bp / 2) ** lsize
         # print(bsum_check)
-    print(c, '≠',67.96)
+    print(c, '≠', 67.96)
     warn('cross obs maths not done.')
     raise NotImplementedError
+
 
 ################TESTS####################################################################################################
 
@@ -1198,7 +1205,6 @@ def test_wayne():
     driver(1600, 1425, 2, [250, 274, 375, 650, 655, 757, 763, 982, 991])
 
 
-
 def troubleshooting_load():
     print('There is an error in mutational load earmarked with too little detail.')
     print('test with made up data seems okay')
@@ -1224,6 +1230,7 @@ def troubleshooting_load():
     x = MutationLoad(mutball)
     print(x.lamb._num, '±', x.lamb._sem)
     print('SEM is wrong. Too low. Why?')
+
 
 #### Main ##############################################################################################################
 
