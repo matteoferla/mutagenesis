@@ -35,6 +35,8 @@ T = "\t"
 """
 
 
+######### Mutanalyst ###################################################################################################
+
 class Mutation:
     """Accepts as arguments:
     * a mutation string
@@ -913,7 +915,7 @@ class NumSEM:
                    b)  # I am unsure if min is best, hence the method. I assume that the worst case scenario is the smallest.
         # Also it is not degrees of freedom but sample size...
 
-##### Making of defs
+##### Making of defs ####################################################################################################
 
 def mincodondist(codon, aa):
     # there must be a more elegant way, but this will do. Serine and stop are the problematic ones.
@@ -987,8 +989,8 @@ def generateCodonCodex():
             it.product("ATGC", repeat=3)}
 
 
-##### Wayne's stuff
-# This part is not OO yet.
+##### Wayne's stuff ####################################################################################################
+# This part is not obj oriented yet.
 
 class Library:
     """
@@ -1163,7 +1165,7 @@ def driver(lsize, seq_len, cross, positions, observable=True):
     warn('cross obs maths not done.')
     raise NotImplementedError
 
-################TESTS#########################
+################TESTS####################################################################################################
 
 def test_mutanalyst():
     wt = MutationDNASeq(
@@ -1222,6 +1224,8 @@ def troubleshooting_load():
     x = MutationLoad(mutball)
     print(x.lamb._num, '±', x.lamb._sem)
     print('SEM is wrong. Too low. Why?')
+
+#### Main ##############################################################################################################
 
 
 if __name__ == "__main__":
