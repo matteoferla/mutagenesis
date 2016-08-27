@@ -1,10 +1,13 @@
 # Mutants!
-Biopython is lacking when it comes to mutagenesis. Hopefully this module will help!
-This module will be the basis of a revamped Pedel server, you can see the proto-pre-alpha
-at [pedel2-matteoferla.rhcloud.com](pedel2-matteoferla.rhcloud.com).
-
+Biopython is lacking when it comes to mutagenesis. Hopefully this module will help!    
 > This is pre-release. You can use some features of it, but some might not work or might change in future.
 > Also the code contains a lot of features that are not documented here. This is a just a MD version of the actual docstring, so best check there for an upto date details.
+
+## Pedel suite
+Furthermore, this module will be the basis of a revamped Pedel server (name to be decided), you can see the proto-pre-alpha
+at [pedel2-matteoferla.rhcloud.com](pedel2-matteoferla.rhcloud.com).
+and the original at [http://guinevere.otago.ac.nz/aef/STATS/](http://guinevere.otago.ac.nz/aef/STATS/)
+—use that and don't forget to cite the paper!
 
 # Usage
 This Python module allow an easy way to add mutations (either nucleic acid or protein) to a nucleic acid sequence.
