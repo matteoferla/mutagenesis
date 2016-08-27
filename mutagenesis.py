@@ -1149,8 +1149,6 @@ class Driver:
             self.obs_lambda_cross = self.calculate_obs_lambda(lambda_cross)
             self.true_lambda_cross =lambda_cross
 
-
-
     def _interate_for_true_lambda(self):
         # http://guinevere.otago.ac.nz/aef/STATS/PROGS/driver.cxx
         # Pretty sure using a Python solver would be better
