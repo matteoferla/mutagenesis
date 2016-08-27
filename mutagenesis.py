@@ -1055,13 +1055,14 @@ def glue(vsize, lsize=None, completeness=None, probability=None):  # TODO UNFINI
     if not vsize:
         raise Exception("Without size of variants no glue calculations can be done")
     elif not lsize and completeness:
-        lsize=glue_library(vsize, completeness)
+        lsize = glue_library(vsize, completeness)
     elif not lsize and probability:
         lsize = glue_probability(vsize, probability)
     elif lsize and not completeness:
-        completeness=glue_completeness(vsize, lsize)
+        completeness = glue_completeness(vsize, lsize)
     elif lsize and not probability:
         raise NotImplementedError
+
 
 def pedel(lsize, seq_len, mps, dist_fx=poisson):
     """
@@ -1132,24 +1133,32 @@ def pedel_AA(seq, lsize, seq_len, mps, spectrum, dist_fx=poisson):
     leff = lsize - lbroken
     raise NotImplementedError
 
+
 class Driver:
-    settings={'maxiter': 200, 'tolerance': 0.001}
+    settings = {'maxiter': 200, 'tolerance': 0.001}
 
     def __init__(self, lsize, seq_len, lambda_cross, positions, observable=True):
         warn('MATHS BROKEN. I HAVE TRIED USING THE CXX MATHS AND IT FAILED TOO :(')
-        self.lsize=lsize
-        self.seq_len=seq_len
-        self.positions=positions
+        # store the variables.
+        self.lsize = lsize
+        self.seq_len = seq_len
+        self.positions = positions
         self.n_mutants = len(self.positions)
         self.possible_seq = 2 ** self.n_mutants
+        # Calculate the missing lambda
         if observable:
-            self.obs_lambda_cross=lambda_cross
+            self.obs_lambda_cross = lambda_cross
             self._interate_for_true_lambda()
         else:
-            self.obs_lambda_cross = self.calculate_obs_lambda(lambda_cross)
-            self.true_lambda_cross =lambda_cross
+            self.obs_lambda_cross = self.calculate_obs_lambda()
+            self.true_lambda_cross = lambda_cross
 
     def _interate_for_true_lambda(self):
+        """
+        Give a lambda observed calculate the true one.
+        :return: None
+        """
+        # Code cannibilised from
         # http://guinevere.otago.ac.nz/aef/STATS/PROGS/driver.cxx
         # Pretty sure using a Python solver would be better
         iteration = 0
@@ -1178,23 +1187,27 @@ class Driver:
             warn("Crossover rate is high. Statistics may be compromised.")
         self.true_lambda_cross = lambda_cross
 
-    def calculate_obs_lambda(self, true_lambda): #calcprob in driver.cxx
-        #Calculate probabilities P(b_i=0) and P(b_i=1) for an even or odd number of crossovers between consecutive
+    def calculate_obs_lambda(self, true_lambda=None):  # calcprob in driver.cxx
+        if not true_lambda:
+            true_lambda = self.true_lambda_cross
+        # Calculate probabilities P(b_i=0) and P(b_i=1) for an even or odd number of crossovers between consecutive
         # varying base-pairs A[i] and A[i+1].
-        #number of allowed crossover points between two consecutive variant residues (nn in driver.cxx)
-        distances = [zb - za-1 for za, zb in zip(self.positions, self.positions[1:])]
-        #poisson lambda for the interval
-        exponential_factors = [math.exp(-2 *ni*true_lambda / (self.seq_len - self.n_mutants - 1))  for ni in distances]
-        #P(even no. crossovers in interval)
+        # number of allowed crossover points between two consecutive variant residues (nn in driver.cxx)
+        distances = [zb - za - 1 for za, zb in zip(self.positions, self.positions[1:])]
+        # poisson lambda for the interval
+        exponential_factors = [math.exp(-2 * ni * true_lambda / (self.seq_len - self.n_mutants - 1)) for ni in
+                               distances]
+        # P(even no. crossovers in interval)
         pb0 = [0.5 * (1 + ei) for ei in exponential_factors]
-        #P(odd no. crossovers in interval)
+        # P(odd no. crossovers in interval)
         pb1 = [0.5 * (1 - ei) for ei in exponential_factors]
-        #Encode possible daughter sequences as binary sequences
+        # Encode possible daughter sequences as binary sequences
         # (1 = odd number of crossovers, 0 = even number of crossovers)
         # and calculate their probabilities P(B_k).
         # By symmetry, we only need to calculate probabilities for half 2^(M-1) of the possible daughter sequences.
+        # The following is how I wrote it:
         blist = product(range(2), repeat=self.n_mutants - 1)
-        #bsum_check = 0
+        # bsum_check = 0
         lobs = 0
         for b in blist:  # b is a tuple of n_mutant zeros..
             bp = 1
@@ -1203,9 +1216,10 @@ class Driver:
                     bp *= 0.5 * (1 - exponential_factors[i])
                 elif bk == 1:
                     bp *= 0.5 * (1 + exponential_factors[i])
-            #bsum_check += bp
-            lobs += bp * sum(b)
+            # bsum_check += bp
+            lobs += bp * sum(b)  # sum(b) is rho
         return lobs
+
 
 ################TESTS####################################################################################################
 
@@ -1278,5 +1292,5 @@ if __name__ == "__main__":
     # SE might be dodgy...
     # troubleshooting_load()
     print('This is not working due to subdriver (my version of the code, which differs from driver.cxx)')
-    print(Driver(1600, 1425, 2, [250, 274, 375, 650, 655, 757, 763, 982, 991],False).obs_lambda_cross)
+    print(Driver(1600, 1425, 2, [250, 274, 375, 650, 655, 757, 763, 982, 991], False).obs_lambda_cross)
     pass
