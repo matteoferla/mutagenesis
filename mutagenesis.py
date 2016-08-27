@@ -1254,7 +1254,7 @@ def test_wayne():
     Driver(1600, 1425, 2, [250, 274, 375, 650, 655, 757, 763, 982, 991])
 
 
-def troubleshooting_load():
+def troubleshooting_mutational_load():
     print('There is an error in mutational load earmarked with too little detail.')
     print('test with made up data seems okay')
     print('I think the se is not np.sqrt(np.diag(cov_matrix))')
