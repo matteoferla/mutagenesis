@@ -4,7 +4,7 @@
 * Understand how Pedel-AA works and strategise —I am stuck at the mapping function
 * Understand how Glue-it works and strategise
 * Pedel extras — do when server is near complete
-* Driver... how is true crossover calculated?
+* Driver... why is it broken?
 
 [http://www.ncbi.nlm.nih.gov/pmc/articles/PMC2447733/](Wayne's paper)
 [http://guinevere.otago.ac.nz/mlrgd/STATS/FORM/pedel-AA-stats.html](Old site)
