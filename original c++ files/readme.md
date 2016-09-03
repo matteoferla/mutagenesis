@@ -14,4 +14,20 @@ They all compile fine, except for two `driver.cxx` and `glue_mc.cxx`
     $ ./driver98
     Segmentation fault: 11
 
-Which means there is a stackOverflow, but I am unfamiliar with C++.
+Which means there is a stackOverflow, but I am unfamiliar with C++ and I am 
+confused why a decade old script fails due to it.
+The offending line is:
+
+    define maxndaugh 524288
+    
+    double          PBk[maxndaugh],
+                    Xk[maxndaugh],
+                    Xk2[maxndaugh];
+
+Namely, the code tries to make an array too large.
+SO has this to say about this SO error: [link](StackOverflow has this to say about the stackOverflow error: [link]()http://stackoverflow.com/questions/571945/getting-a-stack-overflow-exception-when-declaring-a-large-array .) .
+
+For now the following has been changed:
+
+    #define maxpos 15
+    #define maxndaugh 32768
