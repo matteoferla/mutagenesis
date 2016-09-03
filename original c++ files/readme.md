@@ -12,6 +12,6 @@ They all compile fine, except for two `driver.cxx` and `glue_mc.cxx`
     Segmentation fault: 11
     $ g++ driver.cxx -o driver98 -std=c++98
     $ ./driver98
-    Segmentation fault: 98
+    Segmentation fault: 11
 
 Which means there is a stackOverflow, but I am unfamiliar with C++.
