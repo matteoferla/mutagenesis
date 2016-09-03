@@ -31,3 +31,7 @@ For now the following has been changed:
 
     #define maxpos 15
     #define maxndaugh 32768
+
+In glue I changed:
+
+    #define maxvar 1000000

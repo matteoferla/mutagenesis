@@ -5,7 +5,7 @@
 #include <iomanip>
 #include <cstring>
 using namespace std;
-#define maxvar 10000000        // 10^7
+#define maxvar 1000000        // 10^6 was 10^7
 #define maxnsims 100000        // 10^5
 #define maxnlibrary 100000000  // 10^8
 
