@@ -2,6 +2,7 @@
 # -*- coding: utf-8 -*-
 # Written for python 3, not tested under 2.
 """
+Deep mutational scan primer design for Carlos Acevedo-Rocha based on this paper: http://nar.oxfordjournals.org/content/43/2/e12.long
 """
 __author__ = "Matteo Ferla. [Github](https://github.com/matteoferla)"
 __email__ = "matteo.ferla@gmail.com"
@@ -135,7 +136,7 @@ def test():
     n = 30
     m=21
     query = randomer(n).lower() + randomer(m).upper() + randomer(n).lower()
-    print('sequence',query)
+    print('sequence:',query)
     import csv
     w = csv.DictWriter(open('out.csv', 'w', newline=''),
                        fieldnames='base codon fw_primer rv_primer len_homology fw_len_anneal rv_len_anneal fw_len_primer rv_len_primer homology_start homology_stop homology_Tm fw_anneal_Tm rv_anneal_Tm'.split())
