@@ -66,42 +66,64 @@ def deep_mutation_scan(region, section, target_temp=55, overlap_len=22, primer_r
                  'homology_Tm': round(mt.Tm_NN(region[start:stop]),1)
                  }
         #iterate to find best fw primer.
-        for i in range(primer_range[0]-int(overlap_len/2)-3, primer_range[1]-int(overlap_len/2)-3):
-            #the length of the annealing part of the primer is i+3 (the end of the mutated codon)
-            #so the region prior to the mutation does not count: -int(overlap_len/2)-3
+        for dir in ('fw','rv'):
+            for i in range(primer_range[0]-int(overlap_len/2)-3, primer_range[1]-int(overlap_len/2)-3):
+                #the length of the annealing part of the primer is i+3 (the end of the mutated codon)
+                #so the region prior to the mutation does not count: -int(overlap_len/2)-3
 
-            # This cannot be done:
-            #mut=region[start:x]+Seq('NNK')+region[x+3:x+i]
-            #ori=region[start:x+i]
-            #t= mt.Tm_NN(mut, c_seq=ori.complement())
-            # ValueError: no thermodynamic data for neighbors 'GG/TA' available
+                # This cannot be done:
+                #mut=region[start:x]+Seq('NNK')+region[x+3:x+i]
+                #ori=region[start:x+i]
+                #t= mt.Tm_NN(mut, c_seq=ori.complement())
+                # ValueError: no thermodynamic data for neighbors 'GG/TA' available
 
-            #this seems to pick the weakest
-            # mut = region[start:x] + Seq('NNK') + region[x + 3:x + i]
-            # t = mt.Tm_NN(mut)
+                #this seems to pick the weakest
+                # mut = region[start:x] + Seq('NNK') + region[x + 3:x + i]
+                # t = mt.Tm_NN(mut)
 
-            # so ignoring forepart
-            mut=region[x+3:x+i]
-            t=mt.Tm_NN(mut)
-            #the tms are too low.
+                # so ignoring forepart
+                if dir == 'fw':
+                    mut=region[x+3:x+i]
+                elif dir == 'rv':
+                    mut = region[x - i:x].reverse_complement()
+                else:
+                    raise Exception
 
+                t=mt.Tm_NN(mut)
+
+                #check if the tms are good...
+                if mut[-1].upper() in ['C','G'] and t>target_temp-1:
+                    break
+                elif t>target_temp+1:
+                    break
+            else:
+                warn('Target temperature not met. {0}C > {1}C'.format(target_temp,t))
+
+            '''
+            # check if G:C nearby first.
+            for j in (1,2,3):
+                if mut[-j-1].upper() in ['C','G']:
+                    mut2 = region[x + 3:x + i-j]
+                    t2 = mt.Tm_NN(mut2)
+                    if t2+ 1 > target_temp:
+                        t=t2
+                        mut=mut2
+                        i=i-j
+            '''
+            if dir == 'fw':
+                codon[dir+'_primer']=region[start:x].upper() + mutation.lower() + mut.upper()
+            else: #dir == 'rv'
+                codon[dir + '_primer'] = region[x+3:stop].reverse_complement().upper() + Seq(mutation).reverse_complement().lower() + mut.upper()
+            codon[dir+'_len_primer']=len(codon[dir+'_primer'])
+            codon[dir+'_anneal_Tm']=round(t,1)
+            codon[dir+'_len_anneal']=i
+
+        for i in range(primer_range[0] - int(overlap_len / 2) - 3, primer_range[1] - int(overlap_len / 2) - 3):
+
+            t = mt.Tm_NN(mut)
             if t>target_temp:
                 break
-        else:
-            warn('Target temperature not met. {0}C > {1}C'.format(target_temp,t))
-        # check if G:C nearby first.
-        for j in (1,2,3):
-            if mut[-j].upper() == 'C' or mut[-j].upper() == 'G':
-                mut2 = region[x + 3:x + i-j]
-                t2 = mt.Tm_NN(mut2)
-                if t2+ 1 > target_temp:
-                    t=t2
-                    mut=mut2
-                    i=i-j
-        codon['primer']=region[start:x].upper() + mutation.lower() + mut.upper()
-        codon['len_primer']=len(codon['primer'])
-        codon['anneal_Tm']=round(t,1)
-        codon['len_anneal']=i
+
         geneball.append(codon)
     return geneball
 
@@ -116,7 +138,7 @@ def test():
     print('sequence',query)
     import csv
     w = csv.DictWriter(open('out.csv', 'w', newline=''),
-                       fieldnames='base codon primer len_homology len_anneal len_primer homology_start homology_stop homology_Tm anneal_Tm'.split())
+                       fieldnames='base codon fw_primer rv_primer len_homology fw_len_anneal rv_len_anneal fw_len_primer rv_len_primer homology_start homology_stop homology_Tm fw_anneal_Tm rv_anneal_Tm'.split())
     w.writeheader()
     w.writerows(deep_mutation_scan(query, (n, n + m)))
 
