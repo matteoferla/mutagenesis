@@ -60,6 +60,7 @@ def deep_mutation_scan(region, section, target_temp=55, overlap_len=22, primer_r
         start=x-int(overlap_len/2)
         stop=x+overlap_len-int(overlap_len/2)
         codon = {'codon': region[x:x+3],
+                 'AA':str(region[x:x+3].translate())+str(x/3),
                  'base':x,
                  'homology_start':start,
                  'homology_stop': stop,
@@ -139,7 +140,7 @@ def test():
     print('sequence:',query)
     import csv
     w = csv.DictWriter(open('out.csv', 'w', newline=''),
-                       fieldnames='base codon fw_primer rv_primer len_homology fw_len_anneal rv_len_anneal fw_len_primer rv_len_primer homology_start homology_stop homology_Tm fw_anneal_Tm rv_anneal_Tm'.split())
+                       fieldnames='base AA codon fw_primer rv_primer len_homology fw_len_anneal rv_len_anneal fw_len_primer rv_len_primer homology_start homology_stop homology_Tm fw_anneal_Tm rv_anneal_Tm'.split())
     w.writeheader()
     w.writerows(deep_mutation_scan(query, (n, n + m)))
 
