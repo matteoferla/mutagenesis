@@ -60,7 +60,7 @@ def deep_mutation_scan(region, section, target_temp=55, overlap_len=22, primer_r
         start=x-int(overlap_len/2)
         stop=x+overlap_len-int(overlap_len/2)
         codon = {'codon': region[x:x+3],
-                 'AA':str(region[x:x+3].translate())+str(x/3),
+                 'AA':str(region[x:x+3].translate())+str(int(x/3)),
                  'base':x,
                  'homology_start':start,
                  'homology_stop': stop,
