@@ -18,7 +18,7 @@ import math
 from warnings import warn
 import random
 
-def deep_mutation_scan(region, section, target_temp=55, overlap_len=22, primer_range=(None,60), mutation='NNK'):
+def deep_mutation_scan(region, section, target_temp=55, overlap_len=22, primer_range=(None,60), mutation='NNK', GC_bonus=1):
     """
     Designs primers for quikchange for deep mutation scanning.
     Based on the overlap principle of http://nar.oxfordjournals.org/content/43/2/e12.long
@@ -30,6 +30,7 @@ def deep_mutation_scan(region, section, target_temp=55, overlap_len=22, primer_r
     :param overlap_len: the length of the overlap of the two primers
     :param primer_range: the min and max len of the primer.
     :param mutation: str of the desired mutatated codon
+    :param GC_bonus: 5' GC clamp. This number is added to the Tm when checking if is greater than the set threshold target_temp.
     :return: a list of dictionaries with the following keys: base codon primer len_homology len_anneal len_primer homology_start homology_stop homology_Tm anneal_Tm
 
     Regarding salts. check out mt.salt_correction at http://biopython.org/DIST/docs/api/Bio.SeqUtils.MeltingTemp-module.html#salt_correction
@@ -94,9 +95,9 @@ def deep_mutation_scan(region, section, target_temp=55, overlap_len=22, primer_r
                 t=mt.Tm_NN(mut)
 
                 #check if the tms are good...
-                if mut[-1].upper() in ['C','G'] and t>target_temp-1:
+                if mut[-1].upper() in ['C','G'] and t>target_temp-GC_bonus:
                     break
-                elif t>target_temp+1:
+                elif t>target_temp:
                     break
             else:
                 warn('Target temperature not met. {0}C > {1}C'.format(target_temp,t))
@@ -130,10 +131,16 @@ def deep_mutation_scan(region, section, target_temp=55, overlap_len=22, primer_r
     return geneball
 
 def randomer(n):
+    """
+    Generate random DNA (not a randomer (NNNNN) which is a mix of random DNA)
+    :param n: length
+    :return: string
+    """
     alphabet=['A','T','G','C']
     return ''.join([random.choice(alphabet) for x in range(n)])
 
 def test():
+    """Diagnostic!"""
     n = 30
     m=21
     query = randomer(n).lower() + randomer(m).upper() + randomer(n).lower()
