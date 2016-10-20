@@ -7,6 +7,7 @@ Deep mutational scan primer design for Carlos Acevedo-Rocha based on this paper:
 __author__ = "Matteo Ferla. [Github](https://github.com/matteoferla)"
 __email__ = "matteo.ferla@gmail.com"
 __date__ = ""
+__version__ = "1.0.8"
 
 N = "\n"
 T = "\t"
@@ -18,7 +19,7 @@ import math
 from warnings import warn
 import random
 
-def deep_mutation_scan(region, section, target_temp=55, overlap_len=22, primer_range=(None,60), mutation='NNK', GC_bonus=1):
+def deep_mutation_scan(region, section, target_temp=55, overlap_len=22, primer_range=(None,60), mutation='NNK', GC_bonus=1, Tm_bonus=2.8):
     """
     Designs primers for quikchange for deep mutation scanning.
     Based on the overlap principle of http://nar.oxfordjournals.org/content/43/2/e12.long
@@ -31,6 +32,7 @@ def deep_mutation_scan(region, section, target_temp=55, overlap_len=22, primer_r
     :param primer_range: the min and max len of the primer.
     :param mutation: str of the desired mutatated codon
     :param GC_bonus: 5' GC clamp. This number is added to the Tm when checking if is greater than the set threshold target_temp.
+    :param Tm_bonus: Temp increase due to salt. Distilled water (+0). To match the IDT oligoanalyser with 50 mM Na (+2.8&deg;C). Taq buffer (+4.9&deg;C), Phusion buffer (+11.6&deg;C), Q5 buffer (+13.3&deg;C)
     :return: a list of dictionaries with the following keys: base codon primer len_homology len_anneal len_primer homology_start homology_stop homology_Tm anneal_Tm
 
     Regarding salts. check out mt.salt_correction at http://biopython.org/DIST/docs/api/Bio.SeqUtils.MeltingTemp-module.html#salt_correction
@@ -92,7 +94,7 @@ def deep_mutation_scan(region, section, target_temp=55, overlap_len=22, primer_r
                 else:
                     raise Exception
 
-                t=mt.Tm_NN(mut)
+                t=mt.Tm_NN(mut)+float(Tm_bonus)
 
                 #check if the tms are good...
                 if mut[-1].upper() in ['C','G'] and t>target_temp-GC_bonus:
@@ -123,7 +125,7 @@ def deep_mutation_scan(region, section, target_temp=55, overlap_len=22, primer_r
 
         for i in range(primer_range[0] - int(overlap_len / 2) - 3, primer_range[1] - int(overlap_len / 2) - 3):
 
-            t = mt.Tm_NN(mut)
+            t = mt.Tm_NN(mut)+float(Tm_bonus)
             if t>target_temp:
                 break
 
